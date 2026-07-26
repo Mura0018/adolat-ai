@@ -44,7 +44,7 @@ Yuqoridagi chegaralar `docs/DATABASE.md`da batafsil asoslangan; kelgusi g'oyalar
 
 MVP'ga yetish quyidagi ketma-ket bosqichlarga bo'lingan. Har bir bosqich oldingisining ustiga quriladi va Sprint yakunida audit talabidan o'tishi shart (`docs/DEVELOPMENT_RULES.md`, 20–25-bandlar).
 
-- **Bosqich 0 — Poydevor va hujjatlash (yakunlangan):** loyiha ko'rinishi (vision), papka strukturasi, Clean Architecture konventsiyasi, ma'lumotlar bazasi dizayni, xavfsizlik arxitekturasi, tizim arxitekturasi va UI dizayni hujjatlashtirildi (`README.md`, `docs/architecture.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/UI.md`). Dart skeleti (`lib/`, `pubspec.yaml`) tayyorlangan, lekin biznes logika hali yozilmagan (`PROJECT_AUDIT.md`).
+- **Bosqich 0 — Poydevor va hujjatlash (yakunlangan):** loyiha ko'rinishi (vision), papka strukturasi, Clean Architecture konventsiyasi, ma'lumotlar bazasi dizayni, xavfsizlik arxitekturasi, tizim arxitekturasi va UI dizayni hujjatlashtirildi (`README.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/UI.md`). Dart skeleti (`lib/`, `pubspec.yaml`) tayyorlangan, lekin biznes logika hali yozilmagan (`PROJECT_AUDIT.md`).
 - **Bosqich 1 — Poydevor infratuzilmasi va Autentifikatsiya:** haqiqiy Supabase loyihasi, RLS siyosatlarining dastlabki qo'llanilishi va to'liq autentifikatsiya oqimi (batafsil quyida).
 - **Bosqich 2 — Murojaat (Appeals) oqimi:** murojaat yaratish, tahrirlash, yuborish, holatini kuzatish va rasmiy javobni ko'rish (admin tomonidan kiritilgan).
 - **Bosqich 3 — Nizo (Disputes) va AI tahlili:** ikki tomonli nizo yaratish, tomonlar faktlarini taqdim etishi, AI Service integratsiyasi va tarafsiz tahlil natijasini ko'rsatish.
@@ -74,7 +74,7 @@ Bosqich 1 maqsadi — ilovaning "hech narsa ishlamaydi" holatidan "foydalanuvchi
 - Fuqaro/Tashkilot va Admin uchun bo'sh (placeholder), lekin navigatsiya jihatidan to'liq ishlaydigan asosiy ekranlar skeleti (`docs/UI.md`, "Navigation Structure" bo'limidagi bo'limlar bo'yicha).
 - `core/error/`dagi `Failure` sealed union implementatsiyasi va kamida autentifikatsiya feature'i orqali sinovdan o'tgan `Exception → Failure` zanjiri.
 - Tuzatilgan `dio_client.dart` — `LogInterceptor` faqat `kDebugMode`da faol.
-- Yangilangan `docs/setup.md` (agar Supabase loyihasini sozlash bo'yicha yangi amaliy qadamlar paydo bo'lsa) va yangilangan `PROJECT_AUDIT.md` qayta baholovi — Bosqich 1 yakunida "Xavfsizlik" va "Kengaytirish imkoniyati" bo'limlaridagi tegishli topilmalarning yopilganini ko'rsatuvchi.
+- Yangilangan `docs/SETUP.md` (agar Supabase loyihasini sozlash bo'yicha yangi amaliy qadamlar paydo bo'lsa) va yangilangan `PROJECT_AUDIT.md` qayta baholovi — Bosqich 1 yakunida "Xavfsizlik" va "Kengaytirish imkoniyati" bo'limlaridagi tegishli topilmalarning yopilganini ko'rsatuvchi.
 
 ## Phase 2
 

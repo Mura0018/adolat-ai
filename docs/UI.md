@@ -16,7 +16,7 @@ Bu hujjat **faqat dizayn hujjati** — kod yo'q. Maqsad: MVP doirasida ilova int
 
 ## Navigation Structure
 
-- **Marshrutlash asosi:** yagona markazlashgan **GoRouter** konfiguratsiyasi orqali (`lib/router/`) — har bir feature o'z marshrutini shu yerga ro'yxatdan o'tkazadi, deklarativ va bashorat qilinadigan navigatsiya ta'minlanadi (`docs/architecture.md`).
+- **Marshrutlash asosi:** yagona markazlashgan **GoRouter** konfiguratsiyasi orqali (`lib/router/`) — har bir feature o'z marshrutini shu yerga ro'yxatdan o'tkazadi, deklarativ va bashorat qilinadigan navigatsiya ta'minlanadi (`docs/ARCHITECTURE.md`, "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi).
 - **Autentifikatsiya to'sig'i (auth guard):** sessiyasi yo'q foydalanuvchi himoyalangan (protected) marshrutlarga kira olmaydi — avtomatik ravishda "Authentication Screens" oqimiga yo'naltiriladi; sessiyasi mavjud foydalanuvchi esa autentifikatsiya ekranlariga qaytarilmaydi (`docs/ARCHITECTURE.md`, "Authentication Flow" bo'limi).
 - **Rolga qarab asosiy navigatsiya ikki shoxobchaga bo'linadi:**
   - **Fuqaro / Tashkilot uchun** — pastki navigatsiya paneli (bottom navigation) orqali asosiy bo'limlar: **Bosh sahifa**, **Murojaatlarim**, **Nizolarim**, **Xabarnomalar**, **Profil**. Ikkala rol ham bir xil navigatsiya tuzilmasidan foydalanadi (`docs/SECURITY.md`dagi teng huquq mantig'iga muvofiq), faqat Profil bo'limidagi maydonlar farq qiladi.

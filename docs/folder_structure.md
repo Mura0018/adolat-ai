@@ -17,4 +17,4 @@
 
 Har bir papka ichida alohida `README.md` mavjud — u yerda shu papkaning aniqroq vazifasi va ichki tuzilmasi tushuntirilgan.
 
-Batafsil arxitektura tushuntirishi uchun: [`architecture.md`](./architecture.md). O'rnatish va ishga tushirish uchun: [`setup.md`](./setup.md).
+Batafsil arxitektura tushuntirishi uchun: [`ARCHITECTURE.md`](./ARCHITECTURE.md). O'rnatish va ishga tushirish uchun: [`SETUP.md`](./SETUP.md).

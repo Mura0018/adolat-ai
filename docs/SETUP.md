@@ -1,12 +1,12 @@
 # SETUP.md — Adolat AI ishlab chiqish muhiti (umumiy ko'rinish)
 
-Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlari yo'q. Amaliy, qadam-baqadam bajariladigan buyruqlar uchun: **`docs/setup.md`** (kichik harflar bilan). Ushbu hujjat esa ishlab chiqish muhitining **nima**dan iboratligini va **nima uchun** shunday tanlangani tushuntiradi — yangi qo'shilgan dasturchi yoki loyihani birinchi marta ko'rib chiqayotgan kishi uchun yuqori darajadagi mo'ljal (orientation) beradi.
+Bu hujjat ishlab chiqish muhitining **nima**dan iboratligini, **nega** shunday tanlanganini va uni sozlash uchun **qanday** amaliy qadamlar kerakligini birlashtirib tushuntiradi — yangi qo'shilgan dasturchi yoki loyihani birinchi marta ko'rib chiqayotgan kishi uchun yuqori darajadagi mo'ljal (orientation) beradi. Amaliy, qadam-baqadam bajariladigan buyruqlar hujjat oxiridagi "Amaliy O'rnatish Qadamlari" bo'limida jamlangan.
 
 ## Purpose
 
-- Ushbu hujjat loyihaga yangi qo'shilgan dasturchiga (yoki uni birinchi marta ko'rib chiqayotgan tomonga) quyidagi savollarga javob beradi: qanday ishlab chiqish muhiti kutilmoqda, qanday vositalar zarur, loyiha qanday tashkil etilgan va Supabase backend qanday sozlanishi kerak.
-- `docs/setup.md` amaliy buyruqlar ketma-ketligini beradi (masalan `flutter pub get`); bu hujjat esa **nega** aynan shu vositalar va shu tuzilma tanlanganini tushuntiradi — ikkalasi bir-birini to'ldiradi, ziddiyatga kirmaydi.
-- Texnologik tanlovlarning to'liq asoslanishi uchun: `docs/architecture.md` (ichki Clean Architecture), `docs/ARCHITECTURE.md` (tizim darajasidagi arxitektura), `docs/DATABASE.md` va `docs/SECURITY.md` (Supabase bilan bog'liq qarorlar).
+- Ushbu hujjat loyihaga yangi qo'shilgan dasturchiga (yoki uni birinchi marta ko'rib chiqayotgan tomonga) quyidagi savollarga javob beradi: qanday ishlab chiqish muhiti kutilmoqda, qanday vositalar zarur, loyiha qanday tashkil etilgan, Supabase backend qanday sozlanishi kerak va buni amalda qanday bajarish mumkin.
+- "Amaliy O'rnatish Qadamlari" bo'limi amaliy buyruqlar ketma-ketligini beradi (masalan `flutter pub get`); qolgan bo'limlar esa **nega** aynan shu vositalar va shu tuzilma tanlanganini tushuntiradi — ikkalasi bir-birini to'ldiradi, ziddiyatga kirmaydi.
+- Texnologik tanlovlarning to'liq asoslanishi uchun: `docs/ARCHITECTURE.md` (ichki Clean Architecture va tizim darajasidagi arxitektura), `docs/DATABASE.md` va `docs/SECURITY.md` (Supabase bilan bog'liq qarorlar).
 
 ## Development Environment
 
@@ -21,7 +21,7 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 
 - **Flutter SDK** — `pubspec.yaml`da belgilangan minimal versiya (`>=3.24.0`); Dart SDK Flutter bilan birga keladi (`>=3.5.0 <4.0.0`).
 - **Git** — versiya nazorati va loyiha tarixini boshqarish uchun.
-- **Kod generatsiyasi vositasi** — `build_runner` (`freezed`, `json_serializable` bilan birga) — loyiha immutable modellarni (`Freezed`) qo'llagani sababli zarur (`docs/architecture.md`).
+- **Kod generatsiyasi vositasi** — `build_runner` (`freezed`, `json_serializable` bilan birga) — loyiha immutable modellarni (`Freezed`) qo'llagani sababli zarur (`docs/ARCHITECTURE.md`, "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi).
 - **Lokalizatsiya generatsiya vositasi** — Flutter tarkibidagi `gen-l10n` — `lib/localization/*.arb` fayllaridan tarjima klassini hosil qilish uchun.
 - **Platforma toolchainlari:** Android uchun Android SDK (odatda Android Studio orqali o'rnatiladi); iOS uchun Xcode (faqat macOS'da); Web uchun qo'shimcha vosita talab qilinmaydi, faqat brauzer.
 - **Supabase hisobi va loyihasi** — backend xizmatlariga (Auth, Database, Storage) ulanish uchun; loyiha kaliti va manzili "Environment Variables" bo'limida tavsiflangan tarzda beriladi.
@@ -33,12 +33,12 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 - Yuqori darajadagi tashkillashtirish: `lib/core/` (feature'ga bog'liq bo'lmagan infratuzilma), `lib/features/` (har bir biznes imkoniyat, uch qatlamli), `lib/shared/` (feature'lar orasida umumiy kod), `lib/services/` (tashqi integratsiyalar — Supabase, Dio, Secure Storage), `lib/models/` (umumiy data modellari), `lib/widgets/` (qayta ishlatiladigan UI komponentlar), `lib/theme/`, `lib/router/`, `lib/localization/`.
 - Kod bilan bog'liq bo'lmagan papkalar: `assets/` (statik resurslar), `docs/` (loyiha hujjatlari — shu hujjat shu yerda joylashadi), `test/` (avtomatik testlar, `lib/` strukturasini oynadek aks ettiradi).
 - Har bir papka ichida o'ziga xos `README.md` mavjud — u yerda shu papkaning aniqroq vazifasi tushuntirilgan; yangi fayl qo'shishdan oldin shu `README.md`larni o'qish tavsiya etiladi (`docs/DEVELOPMENT_RULES.md`, "Mavjud kod va hujjatlar o'qilmasdan yangi kod yozilmaydi" tamoyili).
-- Platforma papkalari (`android/`, `ios/`, `web/`) hozircha mavjud emas — ular birinchi marta loyiha ishga tushirilganda generatsiya qilinadi (amaliy qadam: `docs/setup.md`).
+- Platforma papkalari (`android/`, `ios/`, `web/`) hozircha mavjud emas — ular birinchi marta loyiha ishga tushirilganda generatsiya qilinadi (amaliy qadam: "Amaliy O'rnatish Qadamlari" bo'limi).
 
 ## Environment Variables
 
-- Loyiha maxfiy konfiguratsiya qiymatlarini `.env` fayl orqali emas, **build vaqtidagi `--dart-define` parametrlari** orqali qabul qiladi — bu yondashuv `docs/setup.md`da belgilangan va `lib/core/config/env_config.dart` orqali ilova ichida o'qiladi.
-- Kerakli asosiy o'zgaruvchilar: Supabase loyiha manzili (URL), Supabase ochiq (`anon`) kaliti va, agar alohida API zarur bo'lsa, uning bazaviy manzili. Aniq o'zgaruvchi nomlari va ularni berish tartibi uchun: `docs/setup.md`.
+- Loyiha maxfiy konfiguratsiya qiymatlarini `.env` fayl orqali emas, **build vaqtidagi `--dart-define` parametrlari** orqali qabul qiladi — bu yondashuv "Amaliy O'rnatish Qadamlari" bo'limida belgilangan va `lib/core/config/env_config.dart` orqali ilova ichida o'qiladi.
+- Kerakli asosiy o'zgaruvchilar: Supabase loyiha manzili (URL), Supabase ochiq (`anon`) kaliti va, agar alohida API zarur bo'lsa, uning bazaviy manzili. Aniq o'zgaruvchi nomlari va ularni berish tartibi uchun: "Amaliy O'rnatish Qadamlari" bo'limi.
 - **Maxfiylik talabi:** bu qiymatlar hech qachon manba kodiga qattiq yozilmaydi va versiya nazoratiga (Git) yuklanmaydi (`docs/SECURITY.md`, "Secrets Management" bo'limi; `docs/DEVELOPMENT_RULES.md`, 13-band).
 - **Kalitlar ajratilishi:** klientga faqat cheklangan huquqli `anon key` beriladi; to'liq huquqli `service role` kaliti hech qachon klient tomoniga berilmaydi, faqat backend/serverless muhitda saqlanadi (`docs/SECURITY.md`, "API Security" va "Secrets Management" bo'limlari).
 - **Muhitlar bo'yicha ajratish:** development, staging va production uchun alohida Supabase loyihalari va mos qiymatlar ishlatilishi tavsiya etiladi — bitta muhitning kaliti boshqasida qayta ishlatilmaydi (`docs/ARCHITECTURE.md`, "Deployment Architecture" bo'limi).
@@ -75,10 +75,10 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 ## Development Workflow
 
 - **Ishni boshlashdan oldin:** mavjud kod va tegishli hujjatlar (loyihaviy `docs/*.md`, papka `README.md`lari) o'qilmasdan yangi kod yozilmaydi (`docs/DEVELOPMENT_RULES.md`, 5-band) — bu, ayniqsa, mavjud feature'ga o'xshash yangi feature qo'shishda, konventsiyadan chetga chiqishning oldini oladi.
-- **Kundalik tsikl:** kod bazasining so'nggi holatini olish, bog'liqliklarni yangilash, agar Freezed/JSON modellariga o'zgartirish kiritilgan bo'lsa kod generatsiyasini qayta ishga tushirish, so'ng ilovani mos environment o'zgaruvchilari bilan ishga tushirish (aniq buyruqlar: `docs/setup.md`).
-- **Statik tahlil va formatlash:** har qanday o'zgarish commit qilinishidan oldin loyihaning lint/statik tahlil qoidalariga (`analysis_options.yaml`) mos ekanligi tekshiriladi — bu Clean Architecture qatlamlanishi va nomlash konventsiyalarining (`docs/architecture.md`) buzilmasligini avtomatik nazorat qiladi.
+- **Kundalik tsikl:** kod bazasining so'nggi holatini olish, bog'liqliklarni yangilash, agar Freezed/JSON modellariga o'zgartirish kiritilgan bo'lsa kod generatsiyasini qayta ishga tushirish, so'ng ilovani mos environment o'zgaruvchilari bilan ishga tushirish (aniq buyruqlar: "Amaliy O'rnatish Qadamlari" bo'limi).
+- **Statik tahlil va formatlash:** har qanday o'zgarish commit qilinishidan oldin loyihaning lint/statik tahlil qoidalariga (`analysis_options.yaml`) mos ekanligi tekshiriladi — bu Clean Architecture qatlamlanishi va nomlash konventsiyalarining (`docs/ARCHITECTURE.md`, "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi) buzilmasligini avtomatik nazorat qiladi.
 - **Offline-first funksionallikni sinash:** murojaat/nizo yoki fayl bilan bog'liq har qanday o'zgarish, tarmoq o'chirilgan holatda ham (masalan qurilma "parvoz rejimi"da) qo'lda sinovdan o'tkaziladi — bu MVP'ning majburiy talabi bo'lgani sababli (`docs/ARCHITECTURE.md`, "Offline-First Architecture" bo'limi), oddiy onlayn stsenariy yetarli emas.
-- **Feature qo'shish konventsiyasi:** har bir yangi biznes imkoniyat `docs/architecture.md`da tasvirlangan `data/domain/presentation` uch qatlamiga muvofiq tuziladi; mavjud feature (masalan autentifikatsiya) namunaviy (reference) sifatida ko'rib chiqiladi (`docs/ROADMAP.md`, Bosqich 1).
+- **Feature qo'shish konventsiyasi:** har bir yangi biznes imkoniyat `docs/ARCHITECTURE.md`da (Ichki Kod Arxitekturasi bo'limida) tasvirlangan `data/domain/presentation` uch qatlamiga muvofiq tuziladi; mavjud feature (masalan autentifikatsiya) namunaviy (reference) sifatida ko'rib chiqiladi (`docs/ROADMAP.md`, Bosqich 1).
 - **Hujjatlashtirish:** API yoki ma'lumotlar bazasiga tegishli har qanday o'zgarish tegishli hujjatda (`docs/DATABASE.md`, `docs/SECURITY.md` va h.k.) aks ettiriladi (`docs/DEVELOPMENT_RULES.md`, 9-band) — kod va hujjat bir vaqtda yangilanadi, hujjat "keyinroq" qoldirilmaydi.
 
 ## Git Workflow
@@ -96,14 +96,14 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 - **Markazlashgan konfiguratsiya nuqtasi:** barcha muhitga xos qiymatlar (Supabase URL, kalitlar, API manzili) `lib/core/config/`dagi yagona konfiguratsiya klassi orqali o'qiladi — ilova kodining boshqa qismlari muhit qiymatlarini to'g'ridan-to'g'ri emas, shu markazlashgan nuqta orqali oladi.
 - **Qiymatlarning kelib chiqishi:** haqiqiy qiymatlar kodga yozilmaydi, build vaqtida tashqaridan (`--dart-define` orqali) beriladi — aniq mexanizm "Environment Variables" bo'limida tavsiflangan, bu yerda takrorlanmaydi.
 - **Muhitlar orasidagi izchillik:** development, staging va production muhitlari bir xil konfiguratsiya **shakliga** (qaysi o'zgaruvchilar kerakligiga) ega bo'ladi, faqat qiymatlari farq qiladi — bu farqlarni kutilmagan xatti-harakatlarga olib kelmasligini ta'minlaydi.
-- **Konfiguratsiya o'zgarishini hujjatlashtirish:** yangi environment o'zgaruvchisi qo'shilsa yoki mavjudi o'zgartirilsa, bu o'zgarish `docs/setup.md`da (amaliy qadam sifatida) va zarur bo'lsa ushbu hujjatda aks ettiriladi — kod bazasidagi konfiguratsiya talabi va hujjat doimo sinxron saqlanadi.
+- **Konfiguratsiya o'zgarishini hujjatlashtirish:** yangi environment o'zgaruvchisi qo'shilsa yoki mavjudi o'zgartirilsa, bu o'zgarish ushbu hujjatning "Amaliy O'rnatish Qadamlari" bo'limida (amaliy qadam sifatida) va zarur bo'lsa boshqa tegishli joyda aks ettiriladi — kod bazasidagi konfiguratsiya talabi va hujjat doimo sinxron saqlanadi.
 - **Qattiq yozilgan (hardcoded) qiymatlarga yo'l qo'yilmaydi:** muhitga bog'liq bo'lgan hech qanday qiymat (masalan test uchun vaqtinchalik URL) kodda doimiy qoldirilmaydi — bu keyinchalik muhitlar orasida tasodifiy chalkashlikning oldini oladi.
 - **Maxfiy va nomaxfiy konfiguratsiya farqi:** nomaxfiy sozlamalar (masalan ilova nomi, versiya) kodda ochiq saqlanishi mumkin; maxfiy qiymatlar esa har doim "Environment Variables" bo'limidagi qoidaga bo'ysunadi — ikkalasi bir xil mexanizmda aralashtirilmaydi.
 
 ## Testing Environment
 
 - **Test tuzilmasi:** `test/` papkasi `lib/` strukturasini oynadek aks ettiradi (`docs/folder_structure.md`) — har bir feature'ning `data`/`domain`/`presentation` qatlamlari o'ziga mos test papkasiga ega bo'ladi.
-- **Qatlamlarga mos test turlari:** `domain/` sof Dart bo'lgani sababli tashqi bog'liqliksiz unit test bilan qamrab olinadi; `data/` qatlami datasource'larni soxtalashtirib (mock) sinovdan o'tkaziladi; `presentation/` esa widget testlari orqali tekshiriladi (`docs/architecture.md`).
+- **Qatlamlarga mos test turlari:** `domain/` sof Dart bo'lgani sababli tashqi bog'liqliksiz unit test bilan qamrab olinadi; `data/` qatlami datasource'larni soxtalashtirib (mock) sinovdan o'tkaziladi; `presentation/` esa widget testlari orqali tekshiriladi (`docs/ARCHITECTURE.md`, "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi).
 - **Holat boshqaruvini sinash:** Riverpod providerlari test muhitida `overrideWith` orqali almashtiriladi — bu haqiqiy Supabase chaqiruvisiz ham biznes mantiqni tekshirish imkonini beradi.
 - **Test uchun Supabase muhiti:** avtomatik testlar imkon qadar mock/soxtalashtirilgan datasource orqali ishlaydi; haqiqiy Supabase loyihasiga ulanishni talab qiladigan qo'lda (manual) sinovlar uchun "Authentication Setup" bo'limida tavsiflangan sinov hisoblaridan foydalaniladi.
 - **Offline-first stsenariylarini sinash:** murojaat/nizo va fayl bilan bog'liq testlar nafaqat onlayn, balki tarmoqsiz holatni ham qamrab olishi kerak — bu avtomatik test bilan to'liq qamrab bo'lmasa, kamida qo'lda sinov sifatida "Development Workflow" bo'limidagi talabga muvofiq bajariladi.
@@ -120,8 +120,8 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 
 ## Troubleshooting
 
-- **Platforma papkalari (`android/`, `ios/`, `web/`) topilmayapti:** bu kutilgan holat — loyiha skeleton sifatida ular yo'q holda tayyorlangan; ular birinchi ishga tushirishda generatsiya qilinishi kerak ("Development Environment" bo'limi; amaliy qadam: `docs/setup.md`).
-- **Generatsiya qilingan fayllar (`*.freezed.dart`, `*.g.dart`) eskirgan yoki topilmayapti:** bu fayllar versiya nazoratida saqlanmaydi (`docs/architecture.md`) — model o'zgarganda kod generatsiya vositasi qayta ishga tushirilishi kerak ("Required Tools" bo'limi).
+- **Platforma papkalari (`android/`, `ios/`, `web/`) topilmayapti:** bu kutilgan holat — loyiha skeleton sifatida ular yo'q holda tayyorlangan; ular birinchi ishga tushirishda generatsiya qilinishi kerak ("Development Environment" bo'limi; amaliy qadam: "Amaliy O'rnatish Qadamlari" bo'limi).
+- **Generatsiya qilingan fayllar (`*.freezed.dart`, `*.g.dart`) eskirgan yoki topilmayapti:** bu fayllar versiya nazoratida saqlanmaydi (`docs/ARCHITECTURE.md`, "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi) — model o'zgarganda kod generatsiya vositasi qayta ishga tushirilishi kerak ("Required Tools" bo'limi).
 - **Lokalizatsiya klassi (`AppLocalizations`) topilmayapti:** `.arb` fayllaridan generatsiya qilinmagan bo'lishi mumkin — lokalizatsiya generatsiya vositasi ishga tushirilishi kerak ("Required Tools" bo'limi).
 - **Ilova ishga tushganda Supabase'ga ulanolmayapti:** environment o'zgaruvchilari (URL, `anon key`) build vaqtida berilmagan yoki noto'g'ri bo'lishi mumkin — "Environment Variables" bo'limidagi talablar qayta tekshiriladi.
 - **"Ruxsat yo'q" (RLS reject) xatoligi kutilmaganda chiqmoqda:** bu ko'pincha xato emas, balki RLS siyosatining to'g'ri ishlayotganining belgisi — foydalanuvchi rolining va egalik shartining kutilganga mosligini "Supabase Setup" va `docs/SECURITY.md`, "Supabase RLS Security" bo'limi asosida tekshirish kerak.
@@ -133,7 +133,7 @@ Bu hujjat **faqat dizayn/ma'lumot hujjati** — kod, SQL yoki terminal buyruqlar
 Yangi qo'shilgan dasturchi yoki ishlab chiqish muhitini birinchi marta sozlayotgan kishi uchun tayyorgarlik ro'yxati:
 
 - [ ] Flutter SDK "Required Tools" bo'limidagi minimal versiyaga mos o'rnatilgan.
-- [ ] Loyiha hujjatlari (`README.md`, `docs/architecture.md`, `docs/folder_structure.md`, `docs/DEVELOPMENT_RULES.md`) o'qib chiqilgan.
+- [ ] Loyiha hujjatlari (`README.md`, `docs/ARCHITECTURE.md`, `docs/folder_structure.md`, `docs/DEVELOPMENT_RULES.md`) o'qib chiqilgan.
 - [ ] Platforma papkalari (`android/`/`ios`/`web`) generatsiya qilingan ("Development Environment" bo'limi).
 - [ ] Bog'liqliklar o'rnatilgan va kod generatsiyasi (Freezed/JSON) muvaffaqiyatli ishga tushirilgan.
 - [ ] Lokalizatsiya klassi generatsiya qilingan.
@@ -144,3 +144,76 @@ Yangi qo'shilgan dasturchi yoki ishlab chiqish muhitini birinchi marta sozlayotg
 - [ ] Git repozitoriysiga kirish huquqi va "Git Workflow" bo'limidagi konventsiyalar bilan tanishlik tasdiqlangan.
 - [ ] Offline-first talabining nima ekanligi (`docs/ARCHITECTURE.md`, "Offline-First Architecture" bo'limi) tushunilgan — bu MVP'ning muzokara qilinmaydigan talabi.
 - [ ] `docs/DEVELOPMENT_RULES.md`dagi jarayon qoidalari (ayniqsa "No Dead End Rule" va commit/audit talablari) bilan tanishilgan.
+
+## Amaliy O'rnatish Qadamlari
+
+Bu bo'lim — yuqoridagi bo'limlarda tushuntirilgan qarorlarning amaliy, qadam-baqadam bajariladigan buyruqlar ketma-ketligi. Loyiha hozircha faqat Dart-tomon skeleti sifatida tayyorlangan (`lib/`, `pubspec.yaml`, hujjatlar) — Flutter SDK o'rnatilmagan muhitda yaratilgan. Loyihani birinchi marta ishga tushirishdan oldin quyidagi qadamlarni bajaring.
+
+### 1. Flutter SDK o'rnatish
+
+Agar hali o'rnatilmagan bo'lsa: https://docs.flutter.dev/get-started/install
+
+Tekshirish:
+
+```bash
+flutter --version
+flutter doctor
+```
+
+### 2. Platforma papkalarini generatsiya qilish (android/ios/web)
+
+Bu skeletda `android/`, `ios/`, `web/` papkalari **yo'q** — ular qo'lda soxta yaratilmagan (bu xato va ishonchsiz bo'lardi). Loyiha ildizida quyidagini ishga tushiring:
+
+```bash
+flutter create --platforms=android,ios,web --org com.adolatai .
+```
+
+Bu buyruq mavjud fayllarni (README.md, pubspec.yaml, lib/) qayta yozib yubormaydi — faqat yetishmayotgan platforma papkalarini qo'shadi.
+
+### 3. Paketlarni o'rnatish
+
+```bash
+flutter pub get
+```
+
+### 4. Kod generatsiyasi (Freezed / json_serializable)
+
+Hozircha `lib/` ichida `@freezed` bilan yozilgan haqiqiy model yo'q (skeletda biznes logika yo'qligi sababli), lekin birinchi feature qo'shilganda:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+### 5. Lokalizatsiya generatsiyasi
+
+```bash
+flutter gen-l10n
+```
+
+Bu `lib/localization/*.arb` fayllaridan `AppLocalizations` klassini generatsiya qiladi. Generatsiyadan so'ng `lib/app.dart`dagi `localizationsDelegates` ro'yxatiga `AppLocalizations.delegate` qo'shing (fayldagi izohga qarang).
+
+### 6. Environment o'zgaruvchilarini berish
+
+Supabase va API kalitlari `--dart-define` orqali beriladi (`.env` fayli commit qilinmaydi):
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=xxxx \
+  --dart-define=API_BASE_URL=https://api.adolat.ai
+```
+
+### 7. Ishga tushirish
+
+```bash
+flutter run
+```
+
+### Qisqacha buyruqlar ketma-ketligi
+
+```bash
+flutter create --platforms=android,ios,web --org com.adolatai .
+flutter pub get
+flutter gen-l10n
+flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+```

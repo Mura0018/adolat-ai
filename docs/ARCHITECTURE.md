@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Adolat AI tizim arxitekturasi (MVP)
 
-Bu hujjat **faqat dizayn hujjati** — kod, SQL yoki diagramma yo'q. Maqsad: MVP doirasida tizimning yuqori darajadagi (high-level) arxitekturasini so'z bilan tasvirlab, komponentlar orasidagi mas'uliyat chegarasini aniqlashtirish. Batafsil implementatsiya tafsilotlari mavjud boshqa hujjatlarga (`docs/architecture.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/folder_structure.md`) havola qilinadi, ular bilan ziddiyatga kirmaydi.
+Bu hujjat **faqat dizayn hujjati** — kod, SQL yoki diagramma yo'q. Maqsad: MVP doirasida tizimning yuqori darajadagi (high-level) arxitekturasini so'z bilan tasvirlab, komponentlar orasidagi mas'uliyat chegarasini aniqlashtirish. Batafsil implementatsiya tafsilotlari mavjud boshqa hujjatlarga (`docs/DATABASE.md`, `docs/SECURITY.md`, `docs/folder_structure.md`) havola qilinadi, ular bilan ziddiyatga kirmaydi.
 
 ## System Overview
 
@@ -27,18 +27,69 @@ Tizim uchta asosiy qatlamdan iborat:
 
 Umumiy oqim: Flutter App foydalanuvchi kiritgan ma'lumotni (murojaat/nizo) Supabase orqali saqlaydi → tegishli holatga o'tganda AI Service chaqiriladi → AI natijasi (`ai_analyses`) yana Supabase orqali saqlanadi va klientga qaytariladi. Komponentlar orasidagi barcha aloqa Supabase'ning autentifikatsiya va RLS mexanizmi orqali nazorat qilinadi — hech bir komponent boshqasiga to'g'ridan-to'g'ri, tekshiruvsiz ishonch bilan murojaat qilmaydi.
 
-Bu uch qatlamli ajratish `docs/architecture.md`da tasvirlangan klient ichidagi Clean Architecture ajratishidan (presentation/domain/data) mustaqil, undan yuqori (tizim) darajadagi ajratishdir — ikkalasi bir-birini to'ldiradi: klient ichidagi qatlamlanish "qanday tuzilgan", tizim darajasidagi ajratish esa "kim kim bilan qanday gaplashadi" savoliga javob beradi.
+Bu uch qatlamli ajratish quyidagi "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limida tasvirlangan klient ichidagi Clean Architecture ajratishidan (presentation/domain/data) mustaqil, undan yuqori (tizim) darajadagi ajratishdir — ikkalasi bir-birini to'ldiradi: klient ichidagi qatlamlanish "qanday tuzilgan", tizim darajasidagi ajratish esa "kim kim bilan qanday gaplashadi" savoliga javob beradi.
 
 ## Flutter App
 
 - **Platforma qamrovi:** bitta Dart kod bazasi orqali Android, iOS va Web'ga tarqatiladi.
-- **Ichki arxitektura:** feature-first + Clean Architecture (`presentation` / `domain` / `data`) — to'liq tavsif: `docs/architecture.md`. Bu hujjat ushbu ichki tuzilmani takrorlamaydi, faqat uning tizimdagi o'rnini belgilaydi.
+- **Ichki arxitektura:** feature-first + Clean Architecture (`presentation` / `domain` / `data`) — to'liq tavsif: quyidagi "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi.
 - **Holat boshqaruvi:** Riverpod — har bir feature o'z providerlariga ega, global infratuzilma providerlar (`services/`) orqali ulashiladi.
 - **Marshrutlash:** GoRouter — yagona markazlashgan konfiguratsiya.
 - **Backend bilan aloqa:** `supabase_flutter` klient kutubxonasi orqali to'g'ridan-to'g'ri Supabase Auth/Database/Storage'ga ulanadi; qo'shimcha tarmoq so'rovlari (agar kerak bo'lsa) `Dio` orqali amalga oshiriladi.
 - **Mas'uliyat chegarasi:** Flutter App hech qachon imtiyozli (service role) amallarni bajarmaydi — u faqat foydalanuvchi nomidan, RLS bilan cheklangan huquq (`anon key` + foydalanuvchi JWT'i) orqali ishlaydi (`docs/SECURITY.md`, "API Security" bo'limi).
 - **Offline-first talabiga aloqadorlik:** klient shunday loyihalanadiki, tarmoq mavjudligidan qat'i nazar foydalanuvchi interfeysi va asosiy amallar ishlashda davom etadi; bu qatlamning aniq mexanizmi quyidagi "Offline-First Architecture" va "Local Storage" bo'limlarida belgilangan.
 - **Xavfsiz mahalliy saqlash:** autentifikatsiya tokenlari va boshqa nozik mahalliy ma'lumotlar `Flutter Secure Storage` orqali saqlanadi (`docs/SECURITY.md`, "JWT Security" bo'limi).
+
+## Ichki Kod Arxitekturasi (Clean Architecture)
+
+Adolat AI **feature-first + Clean Architecture** tamoyiliga asoslanadi. Maqsad: biznes logikani (domain) UI'dan va tashqi kutubxonalardan (Supabase, Dio) ajratib turish — shunda har bir qatlam mustaqil ravishda almashtirilishi va test qilinishi mumkin.
+
+**Qatlamlar (har bir `features/<nom>/` ichida):**
+
+```
+presentation  →  domain  ←  data
+```
+
+- **`domain/`** — markaz. Sof Dart, hech qanday Flutter/Supabase/Dio importi yo'q.
+  - `entities/` — biznes obyektlari (Freezed bilan immutable)
+  - `repositories/` — abstrakt shartnoma (interface), masalan `abstract class AppealsRepository`
+  - `usecases/` — bitta aniq amal (masalan `SubmitAppealUseCase`), Single Responsibility
+- **`data/`** — `domain/repositories/` shartnomasini amalga oshiradi.
+  - `datasources/` — Supabase/API bilan bevosita ishlaydi (`services/supabase/` dan foydalanadi)
+  - `models/` — Freezed DTO (JSON serialization bilan), `domain/entities/`ga xaritalanadi
+  - `repositories/` — `domain/repositories/` interfeysining implementatsiyasi, datasource xatoliklarini `Failure`ga aylantiradi
+- **`presentation/`** — UI va holat boshqaruvi.
+  - `providers/` — Riverpod providerlar, `usecases/`ni chaqiradi
+  - `screens/` — to'liq ekranlar (GoRouter shu yerga ishora qiladi)
+  - `widgets/` — shu feature'ga xos widgetlar
+
+**Xatoliklarni qayta ishlash:** `data` qatlami `Exception` tashlaydi → `repository` implementatsiyasi uni ushlab `core/error/`dagi `Failure` sealed union'iga aylantiradi → `domain`/`presentation` faqat `Failure` bilan ishlaydi, hech qachon xom exception bilan emas.
+
+**Holat boshqaruvi — Riverpod:** har bir feature o'z providerlarini `presentation/providers/` ichida e'lon qiladi. Global/infratuzilma providerlar (`dioClientProvider`, `secureStorageServiceProvider`) `services/` ichida joylashadi va istalgan feature tomonidan `ref.watch`/`ref.read` orqali ishlatiladi.
+
+**Immutable modellar — Freezed:** barcha `domain/entities/` va `data/models/` klasslari `@freezed` annotatsiyasi bilan yoziladi:
+
+```dart
+@freezed
+class Appeal with _$Appeal {
+  const factory Appeal({
+    required String id,
+    required String title,
+  }) = _Appeal;
+
+  factory Appeal.fromJson(Map<String, dynamic> json) => _$AppealFromJson(json);
+}
+```
+
+Generatsiya qilingan `*.freezed.dart`/`*.g.dart` fayllar `.gitignore`ga kiritilgan — ular `dart run build_runner build` orqali lokal generatsiya qilinadi (`docs/SETUP.md`, "Amaliy O'rnatish Qadamlari" bo'limiga qarang).
+
+**Marshrutlash — GoRouter:** yagona `GoRouter` konfiguratsiyasi `router/app_router.dart`da. Har bir feature marshruti shu yerga qo'shiladi, ekranning o'zi feature ichida qoladi.
+
+**Nega bu tuzilma?**
+
+- **Test qilinishi oson** — `domain/` tashqi kutubxonalarga bog'liq emas, shuning uchun mock'siz unit test yozish mumkin.
+- **Almashtirilishi oson** — Supabase o'rniga boshqa backend kerak bo'lsa, faqat `data/` qatlami o'zgaradi, `domain`/`presentation` tegilmaydi.
+- **Katta jamoa uchun mos** — feature-first tuzilma bir nechta dasturchi parallel, bir-biriga xalaqit bermay ishlashiga imkon beradi.
 
 ## Supabase Backend
 
@@ -138,7 +189,7 @@ Ushbu talabning texnik amalga oshirilishi uchta bir-biriga bog'liq quyi komponen
 ## Local Storage
 
 - **Vazifasi:** Flutter App ichida, Supabase'ga bog'liq bo'lmagan holda ishlaydigan mahalliy (on-device) ma'lumot qatlami — offline-first talabining asosiy texnik poydevori.
-- **Clean Architecture bilan bog'lanishi:** Local Storage `data/datasources/` ichida alohida **lokal datasource** sifatida namoyon bo'ladi, u Supabase bilan ishlaydigan **remote datasource** bilan bir xil `domain/repositories/` shartnomasini amalga oshiradi (`docs/architecture.md`ga muvofiq). Repository qatlami tarmoq holatiga qarab qaysi datasource'dan foydalanishni yoki ikkalasini qanday muvofiqlashtirishni hal qiladi — bu qaror `domain`/`presentation` qatlamlari uchun butunlay yashiringan.
+- **Clean Architecture bilan bog'lanishi:** Local Storage `data/datasources/` ichida alohida **lokal datasource** sifatida namoyon bo'ladi, u Supabase bilan ishlaydigan **remote datasource** bilan bir xil `domain/repositories/` shartnomasini amalga oshiradi ("Ichki Kod Arxitekturasi (Clean Architecture)" bo'limiga muvofiq). Repository qatlami tarmoq holatiga qarab qaysi datasource'dan foydalanishni yoki ikkalasini qanday muvofiqlashtirishni hal qiladi — bu qaror `domain`/`presentation` qatlamlari uchun butunlay yashiringan.
 - **Saqlanadigan ma'lumot turlari:**
   - Foydalanuvchi hali serverga yubormagan **qoralama va navbatdagi yozuvlar** (yaratilgan/tahrirlangan, lekin hali sinxronlanmagan murojaat va nizolar).
   - Yuklanishi kutilayotgan **fayllar** (dalil/hujjat), ularning Storage Layer'ga hali yetkazilmagan holati bilan birga.
@@ -193,7 +244,7 @@ Ushbu talabning texnik amalga oshirilishi uchta bir-biriga bog'liq quyi komponen
 ## Error Handling
 
 - **Umumiy tamoyil:** hech qanday xatolik foydalanuvchiga jimgina yashirilmaydi yoki tushunarsiz texnik shaklda ko'rsatilmaydi — har bir xatolik aniq tushuntirish va, imkon qadar, keyingi qadam bilan birga taqdim etiladi (`DEVELOPMENT_RULES.md`, "No Dead End Rule").
-- **Qatlamlar bo'yicha xatolikni qayta ishlash:** `data` qatlami xom `Exception` tashlaydi → `repository` implementatsiyasi uni ushlab `core/error/`dagi `Failure` sealed union'iga aylantiradi → `domain`/`presentation` qatlamlari faqat tuzilgan `Failure` bilan ishlaydi, hech qachon xom exception bilan emas (`docs/architecture.md`ga muvofiq). Bu qatlamlanish xatolikni izchil va bashorat qilinadigan tarzda foydalanuvchiga yetkazish imkonini beradi.
+- **Qatlamlar bo'yicha xatolikni qayta ishlash:** `data` qatlami xom `Exception` tashlaydi → `repository` implementatsiyasi uni ushlab `core/error/`dagi `Failure` sealed union'iga aylantiradi → `domain`/`presentation` qatlamlari faqat tuzilgan `Failure` bilan ishlaydi, hech qachon xom exception bilan emas ("Ichki Kod Arxitekturasi (Clean Architecture)" bo'limiga muvofiq). Bu qatlamlanish xatolikni izchil va bashorat qilinadigan tarzda foydalanuvchiga yetkazish imkonini beradi.
 - **Tarmoq xatoliklari — maxsus muomala:** internet yo'qligi yoki serverga yeta olmaslik oddiy "xatolik" sifatida emas, "Offline-First Architecture" va "Sync Engine" mexanizmi orqali kutilgan holat sifatida qayta ishlanadi — foydalanuvchiga qattiq xatolik ko'rsatish o'rniga, amal navbatga olinganligi bildiriladi.
 - **Validatsiya xatoliklari:** foydalanuvchi kiritgan ma'lumot (masalan noto'g'ri fayl turi, bo'sh majburiy maydon) mos joyda, aniq va tuzatish yo'li ko'rsatilgan holda darhol ko'rsatiladi — bu xatolik turi serverga yuborilishidan oldin, imkon qadar klient darajasida ushlanadi.
 - **Avtorizatsiya xatoliklari:** RLS tomonidan rad etilgan so'rov (masalan foydalanuvchi o'ziga tegishli bo'lmagan yozuvga kirishga urinishi) foydalanuvchiga "ruxsat yo'q" sifatida tushunarli ko'rsatiladi, lekin nima uchun aynan rad etilgani haqida ichki tizim tafsilotlari oshkor qilinmaydi (`docs/SECURITY.md`, "API Security" bo'limi).
@@ -226,10 +277,10 @@ Xavfsizlik Adolat AI arxitekturasida alohida qo'shimcha qatlam emas, balki yuqor
 
 ## Deployment Architecture
 
-- **Klient tarqatish:** Flutter App bitta kod bazasidan uchta maqsadli platforma uchun quriladi — Android (APK/AAB), iOS (IPA) va Web (statik build) — har biri o'z tegishli do'kon/hosting kanali orqali tarqatiladi (`docs/setup.md`da tavsiflangan qurish jarayoni asosida).
+- **Klient tarqatish:** Flutter App bitta kod bazasidan uchta maqsadli platforma uchun quriladi — Android (APK/AAB), iOS (IPA) va Web (statik build) — har biri o'z tegishli do'kon/hosting kanali orqali tarqatiladi (`docs/SETUP.md`, "Amaliy O'rnatish Qadamlari" bo'limida tavsiflangan qurish jarayoni asosida).
 - **Backend joylashuvi:** Supabase — to'liq boshqariladigan (fully managed) platforma sifatida ishlatiladi; loyiha maxsus server infratuzilmasini o'zi boshqarmaydi (o'z-serverida joylashtirish MVP doirasida ko'rib chiqilmagan).
 - **Muhitlar (environments) ajratilishi:** development, staging va production uchun alohida Supabase loyihalari va tegishli kalitlar ishlatiladi (`docs/SECURITY.md`, "Secrets Management" bo'limi) — bir muhitdagi o'zgarish boshqasiga bevosita ta'sir qilmaydi.
-- **Konfiguratsiya yetkazish:** muhitga xos qiymatlar (Supabase URL, anon key, API manzili) build vaqtida `--dart-define` orqali beriladi, kodga yoki versiya nazoratiga hech qachon yozilmaydi (`docs/setup.md`, 6-qadam; `docs/SECURITY.md`, "Secrets Management" bo'limi).
+- **Konfiguratsiya yetkazish:** muhitga xos qiymatlar (Supabase URL, anon key, API manzili) build vaqtida `--dart-define` orqali beriladi, kodga yoki versiya nazoratiga hech qachon yozilmaydi (`docs/SETUP.md`, "Amaliy O'rnatish Qadamlari" bo'limi, 6-qadam; `docs/SECURITY.md`, "Secrets Management" bo'limi).
 - **AI Service joylashuvi:** AI Service Supabase Backend orqali chaqiriladigan alohida backend/serverless komponent sifatida joylashtiriladi ("AI Service" bo'limi); uning aniq ijro muhiti (masalan Supabase Edge Function yoki alohida backend xizmati) MVP doirasida implementatsiya tafsiloti hisoblanadi va ushbu hujjatda arxitektura darajasidan chuqurroq belgilanmaydi — muhim shart shuki, u har doim service role chegarasi ortida qoladi.
 - **Reliz jarayoni va sifat darvozalari:** har bir reliz Security, Performance va UX auditlaridan o'tishi shart; audit natijasi 95 balldan past bo'lsa keyingi Sprint boshlanmaydi, critical xavfsizlik kamchiligi bo'lsa reliz to'xtatiladi (`DEVELOPMENT_RULES.md`, 22–24-bandlar) — bu talablar deploy pipeline'ining ajralmas qismi sifatida ko'riladi, ixtiyoriy qo'shimcha emas.
 - **Versiyalash va o'zgarishlarni kuzatish:** har bir muhim o'zgarish alohida Git commit bilan saqlanadi va API/Database o'zgarishlari hujjatlashtiriladi (`DEVELOPMENT_RULES.md`, 9–10-bandlar) — bu deploy tarixining tekshirilishi va zarur bo'lganda oldingi holatga qaytarilishi (rollback) imkonini beradi.

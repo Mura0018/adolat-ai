@@ -25,4 +25,4 @@ features/
 
 `presentation` → `domain` ← `data`
 
-`domain` qatlami hech qanday tashqi paket (Dio, Supabase, Riverpod)ga bog'liq bo'lmaydi — bu Clean Architecture'ning asosiy qoidasi. Batafsil: [`docs/architecture.md`](../../docs/architecture.md).
+`domain` qatlami hech qanday tashqi paket (Dio, Supabase, Riverpod)ga bog'liq bo'lmaydi — bu Clean Architecture'ning asosiy qoidasi. Batafsil: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md), "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi.

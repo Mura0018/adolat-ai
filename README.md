@@ -15,7 +15,7 @@ O'zbekiston fuqarolari va tashkilotlariga huquqiy yordam, adolat, tartib va qonu
 
 ## Arxitektura
 
-Loyiha **feature-first + Clean Architecture** tamoyiliga asoslanadi: har bir biznes imkoniyat (`lib/features/<nom>/`) `data` / `domain` / `presentation` qatlamlariga bo'lingan holda joylashadi. Batafsil: [`docs/architecture.md`](docs/architecture.md).
+Loyiha **feature-first + Clean Architecture** tamoyiliga asoslanadi: har bir biznes imkoniyat (`lib/features/<nom>/`) `data` / `domain` / `presentation` qatlamlariga bo'lingan holda joylashadi. Batafsil: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), "Ichki Kod Arxitekturasi (Clean Architecture)" bo'limi.
 
 ## Papka strukturasi
 
@@ -38,7 +38,7 @@ Har bir papka ichida o'ziga xos `README.md` mavjud. To'liq jadval: [`docs/folder
 
 ## O'rnatish
 
-Loyiha hozircha faqat Dart-tomon skeleti (`lib/`, `pubspec.yaml`) sifatida tayyorlangan — hech qanday biznes logika yozilmagan. Platforma papkalari (`android/`, `ios/`, `web/`) va ishga tushirish qadamlari uchun: [`docs/setup.md`](docs/setup.md).
+Loyiha hozircha faqat Dart-tomon skeleti (`lib/`, `pubspec.yaml`) sifatida tayyorlangan — hech qanday biznes logika yozilmagan. Platforma papkalari (`android/`, `ios/`, `web/`) va ishga tushirish qadamlari uchun: [`docs/SETUP.md`](docs/SETUP.md), "Amaliy O'rnatish Qadamlari" bo'limi.
 
 ## Holat
 
