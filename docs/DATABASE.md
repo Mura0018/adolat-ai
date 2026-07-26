@@ -17,7 +17,7 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 - **Primary Key:** barcha jadvallarda `uuid` (Supabase standart konventsiyasi), bog'lovchi (junction) jadvaldan tashqari — u composite PK ishlatadi.
 - **Vaqt ustunlari:** `created_at` barcha jadvallarda; `updated_at` faqat yozuv holati o'zgarishi mumkin bo'lgan jadvallarda.
-- **"Mutually exclusive FK" naqshi:** bir nechta jadval (`case_status_history`, `ai_analyses`, `attachments`, `notifications`) ham `appeals`, ham `disputes` bilan bog'lanishi kerak. Postgresda haqiqiy polimorfik FK yo'qligi sababli, bu jadvallarda **ikkita nullable FK** (`appeal_id`, `dispute_id`) + bitta `case_type` enum ustuni ishlatiladi, va faqat bittasi to'ldirilishi CHECK constraint bilan ta'minlanadi. Bu naqsh har bir tegishli jadvalda alohida takrorlanmaydi — shu yerda bir marta tushuntirildi.
+- **"Mutually exclusive FK" naqshi:** bir nechta jadval (`case_status_history`, `ai_analyses`, `attachments`, `notifications`) ham `appeals`, ham `disputes` bilan bog'lanishi kerak. Postgresda haqiqiy polimorfik FK yo'qligi sababli, bu jadvallarda **ikkita nullable FK** (`appeal_id`, `dispute_id`) + bitta `case_type` enum ustuni ishlatiladi. Bu invariant **DB darajasidagi CHECK constraint bilan majburiy ta'minlanadi** (ilova darajasidagi tekshiruv bilan emas — aks holda race condition orqali ikkala FK ham to'ldirilishi yoki ikkalasi ham bo'sh qolishi mumkin): (a) `appeal_id` va `dispute_id`dan **aynan bittasi** to'ldirilgan bo'lishi, (b) `case_type` qiymati to'ldirilgan FK'ga mos kelishi shart (`case_type='appeal'` ⇔ `appeal_id IS NOT NULL`). Bu naqsh har bir tegishli jadvalda alohida takrorlanmaydi — shu yerda bir marta tushuntirildi.
 - **RLS umumiy strategiyasi:** har bir "egalik" (ownership) asosidagi jadvalda foydalanuvchi faqat `auth.uid()` unga tegishli qatorlarni ko'radi/tahrirlaydi; `admin` roli barcha qatorlarni ko'radi; AI/tizim tomonidan yoziladigan jadvallar (masalan `ai_analyses`, `audit_log`) faqat **service role** orqali yoziladi, client to'g'ridan-to'g'ri yoza olmaydi (soxtalashtirish xavfini oldini olish uchun).
 
 ## Jadvallar ro'yxati (tezkor indeks)
@@ -123,7 +123,8 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **RLS talablari:**
 - `SELECT`: barcha autentifikatsiyalangan foydalanuvchilarga ochiq (public read, lug'at jadvali)
-- `INSERT`/`UPDATE`/`DELETE`: faqat `admin`
+- `INSERT`/`UPDATE`: faqat `admin`
+- `DELETE`: **taqiqlanadi** (RLS'da DELETE policy umuman berilmaydi). `appeals`/`disputes` bu jadvalga FK bilan bog'langani sababli jismoniy o'chirish tarixiy yozuvlarni buzadi — kategoriya endi kerak bo'lmasa, `admin` uni faqat `is_active = false` qilib "yumshoq o'chiradi"
 
 **Boshqa jadvallar bilan bog'lanishi:** `appeals.category_id`, `disputes.category_id` shu jadvalga FK bilan bog'lanadi (1:N).
 
@@ -152,7 +153,8 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **RLS talablari:**
 - `SELECT`: public read (autentifikatsiyalangan foydalanuvchilar)
-- `INSERT`/`UPDATE`/`DELETE`: faqat `admin`
+- `INSERT`/`UPDATE`: faqat `admin`
+- `DELETE`: **taqiqlanadi** (RLS'da DELETE policy umuman berilmaydi) — sababi `legal_categories`dagi bilan bir xil: `appeals` bu jadvalga FK bilan bog'langan. Faol bo'lmagan organ faqat `is_active = false` qilib "yumshoq o'chiriladi"
 
 **Boshqa jadvallar bilan bog'lanishi:** `appeals.recipient_body_id` shu jadvalga FK bilan bog'lanadi (1:N).
 
@@ -211,7 +213,8 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 | `respondent_type` | enum (`citizen`, `organization`, `unregistered`) | Qarshi tomon turi |
 | `category_id` | uuid | Huquqiy yo'nalish |
 | `title` | text | Nizo sarlavhasi |
-| `description` | text | Nizo mazmuni, ikkala tomon nuqtai nazaridan faktlar |
+| `description` | text | Nizo mazmuni, **initiator** tomonidan taqdim etilgan faktlar |
+| `respondent_statement` | text, nullable | Nizo bo'yicha **respondent** tomonidan taqdim etilgan faktlar — respondent ro'yxatdan o'tgan (`respondent_profile_id` to'ldirilgan) va javob bergan bo'lsagina to'ldiriladi |
 | `status` | enum (`open`, `ai_analyzing`, `ai_analyzed`, `resolved`, `closed`) | Nizo holati |
 | `created_at` | timestamptz | |
 | `updated_at` | timestamptz | |
@@ -221,15 +224,21 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **Foreign Key:** `initiator_id` → `profiles.id`; `respondent_profile_id` → `profiles.id` (nullable); `category_id` → `legal_categories.id`
 
+**Cheklov:**
+- `initiator_id ≠ respondent_profile_id` — foydalanuvchi o'ziga qarshi nizo ochishi taqiqlanadi (DB darajasidagi CHECK)
+- `respondent_type`/`respondent_profile_id`/`respondent_display_name` mosligi CHECK bilan ta'minlanadi: `respondent_type = 'unregistered'` bo'lsa `respondent_profile_id` bo'sh va `respondent_display_name` to'ldirilgan bo'lishi shart; `respondent_type IN ('citizen', 'organization')` bo'lsa aksincha — `respondent_profile_id` to'ldirilgan bo'lishi shart
+
 **Indexlar:** `initiator_id`; `respondent_profile_id`; `status`; `created_at`
 
 **RLS talablari:**
 - `SELECT`: `initiator_id = auth.uid()` **YOKI** `respondent_profile_id = auth.uid()` bo'lgan foydalanuvchi ko'radi; `admin` — barchasini
 - `INSERT`: faqat `initiator_id = auth.uid()` bilan yaratish mumkin
-- `UPDATE`: `title`/`description` faqat `status = 'open'` holatida initiator tomonidan tahrirlanadi; `status` faqat AI jarayoni (service role) yoki `admin` tomonidan o'zgartiriladi
+- `UPDATE`: `title`/`description` faqat `status = 'open'` holatida **initiator** tomonidan tahrirlanadi; **`respondent_statement`** faqat `respondent_profile_id = auth.uid()` bo'lgan foydalanuvchi tomonidan, `status IN ('open', 'ai_analyzing')` bo'lganda yoziladi (boshqa ustunlarni respondent o'zgartira olmaydi); `status` faqat AI jarayoni (service role) yoki `admin` tomonidan o'zgartiriladi
 - `DELETE`: faqat `open` holatida initiator tomonidan
 
 **Boshqa jadvallar bilan bog'lanishi:** `case_status_history`, `ai_analyses`, `attachments`, `notifications` shu yozuvga (`dispute_id` orqali) bog'lanadi.
+
+> **Muhim qoida (AI xolisligi bilan bog'liq):** `DEVELOPMENT_RULES.md`ning 16-bandi ("AI hech qachon bir tomon foydasiga qaror chiqarmaydi") shu jadval darajasida shu tarzda ta'minlanadi — AI tahlili (`ai_analyses`) boshlanishidan oldin ikkala tomonning faktlari (`description` va `respondent_statement`) mavjudligi tekshirilishi shart. Agar `respondent_type = 'unregistered'` bo'lsa yoki `respondent_statement IS NULL` qolsa, AI tahlili **bir tomonlama ma'lumot asosida** ekanligini aniq belgilashi majburiy (masalan `ai_analyses.analysis_text`da ochiq ko'rsatilishi kerak) — bu tomonlardan biriga "yon bosish" emas, balki tahlil to'liqligi haqidagi shaffoflik talabi.
 
 > **Ochiq qarordagi cheklov:** MVP faqat ikki tomonli nizolarni qo'llab-quvvatlaydi (`respondent_*` ustunlari orqali). Kelgusida ko'p tomonli nizolar kerak bo'lsa, bu alohida `dispute_parties` junction jadvaliga evolyutsiya qilinishi kerak — MVP bosqichida bu ortiqcha murakkablik bo'lgani uchun qo'shilmadi.
 
@@ -257,7 +266,7 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **Foreign Key:** `appeal_id` → `appeals.id` (nullable); `dispute_id` → `disputes.id` (nullable); `changed_by` → `profiles.id` (nullable)
 
-**Cheklov:** `appeal_id` va `dispute_id`dan aynan bittasi to'ldirilgan bo'lishi shart (CHECK constraint yoki ilova darajasida ta'minlanadi)
+**Cheklov:** `appeal_id`/`dispute_id`/`case_type` uchun yuqoridagi "Umumiy konventsiyalar" bo'limida tavsiflangan DB darajasidagi CHECK constraint majburiy qo'llaniladi.
 
 **Indexlar:** `appeal_id`; `dispute_id`; `created_at`
 
@@ -292,7 +301,7 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **Foreign Key:** `appeal_id` → `appeals.id` (nullable); `dispute_id` → `disputes.id` (nullable)
 
-**Cheklov:** `appeal_id` va `dispute_id`dan aynan bittasi to'ldirilgan bo'lishi shart
+**Cheklov:** `appeal_id`/`dispute_id`/`case_type` uchun yuqoridagi "Umumiy konventsiyalar" bo'limida tavsiflangan DB darajasidagi CHECK constraint majburiy qo'llaniladi.
 
 **Indexlar:** `appeal_id`; `dispute_id`; `created_at`
 
@@ -386,7 +395,7 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **Foreign Key:** `appeal_id` → `appeals.id` (nullable); `dispute_id` → `disputes.id` (nullable); `uploaded_by` → `profiles.id`
 
-**Cheklov:** `appeal_id` va `dispute_id`dan aynan bittasi to'ldirilgan bo'lishi shart
+**Cheklov:** `appeal_id`/`dispute_id`/`case_type` uchun yuqoridagi "Umumiy konventsiyalar" bo'limida tavsiflangan DB darajasidagi CHECK constraint majburiy qo'llaniladi.
 
 **Indexlar:** `appeal_id`; `dispute_id`; `uploaded_by`
 
@@ -421,7 +430,7 @@ Bu qarorlar `docs/DEVELOPMENT_RULES.md`ga muvofiq hujjatlashtirildi — kelajakd
 
 **Foreign Key:** `recipient_id` → `profiles.id`; `appeal_id` → `appeals.id` (nullable); `dispute_id` → `disputes.id` (nullable)
 
-**Cheklov:** `case_type` to'ldirilgan bo'lsa, `appeal_id`/`dispute_id`dan mos keluvchisi to'ldirilishi va ikkalasi bir vaqtda to'ldirilmasligi kerak
+**Cheklov:** `appeal_id`/`dispute_id`/`case_type` uchun yuqoridagi "Umumiy konventsiyalar" bo'limida tavsiflangan DB darajasidagi CHECK constraint majburiy qo'llaniladi — bu yerda farq shuki, `case_type` **umuman bo'sh** (`null`) bo'lishi ham mumkin (umumiy tizim xabarlari uchun), bu holda `appeal_id` va `dispute_id` ikkalasi ham `null` bo'lishi shart.
 
 **Indexlar:** composite `(recipient_id, is_read)` (o'qilmagan xabarlarni tez olish uchun); `created_at`
 
