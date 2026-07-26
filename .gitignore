@@ -1,0 +1,34 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+*.ipr
+*.iws
+
+# Codegen chiqishi (Freezed / json_serializable / riverpod_generator)
+*.freezed.dart
+*.g.dart
+*.mocks.dart
+lib/localization/app_localizations*.dart
+
+# Localization codegen
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
