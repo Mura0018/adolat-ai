@@ -80,7 +80,7 @@ Tizimda uchta foydalanuvchi roli mavjud, har biri `profiles.role` ustunida saqla
 - **Saqlash joyi:** haqiqiy fayl tarkibi to'g'ridan-to'g'ri jamoat (public) papkada emas, Supabase Storage'ning tegishli bucket'ida, `attachments` jadvalidagi egalik mantig'iga mos RLS/bucket policy bilan himoyalangan holda saqlanadi.
 - **Nomlash (path) xavfsizligi:** `storage_path` foydalanuvchi kiritgan asl fayl nomiga emas, tizim tomonidan generatsiya qilingan noyob identifikatorga asoslanadi — bu path traversal va fayl nomlari to'qnashuvi (collision) xavfini bartaraf etadi; asl nom faqat `file_name` ustunida ko'rsatish maqsadida saqlanadi.
 - **Kirish huquqi:** yuklangan faylni faqat tegishli murojaat/nizo egasi (dispute uchun ikkala tomon) va `admin` ko'ra oladi — boshqa foydalanuvchiga to'g'ridan-to'g'ri Storage havolasi orqali ham kirish berilmaydi.
-- **Zararli dastur tekshiruvi:** kelgusi bosqichda (MVP doirasidan tashqarida) yuklangan fayllarni virus/zararli kontentga skanerlash xizmati bilan integratsiya ko'rib chiqilishi mumkin — bu `IDEA_PARKING.md`ga yozilishi tavsiya etiladi.
+- **Zararli dastur tekshiruvi:** kelgusi bosqichda (MVP doirasidan tashqarida) yuklangan fayllarni virus/zararli kontentga skanerlash xizmati bilan integratsiya ko'rib chiqilishi mumkin — bu `docs/IDEA_PARKING.md`ga yozilishi tavsiya etiladi.
 
 ## Secrets Management
 
@@ -142,7 +142,7 @@ Tizimda uchta foydalanuvchi roli mavjud, har biri `profiles.role` ustunida saqla
 - **Xabar berish:** ta'sirlangan foydalanuvchilarga va, agar qonunchilik talab qilsa, tegishli davlat organiga hodisa haqida asossiz kechiktirmasdan xabar beriladi — bu shaffoflik va foydalanuvchi ishonchini saqlash tamoyiliga asoslanadi.
 - **Bartaraf etish va tiklash:** ildiz sababi (root cause) aniqlanib bartaraf etiladi, zarur bo'lsa `Backup & Recovery` jarayoni orqali ma'lumot/tizim holati tiklanadi.
 - **Kritik kamchilik bo'lsa — Release taqiqlanadi:** `DEVELOPMENT_RULES.md`, 24-band talabiga muvofiq, critical darajadagi xavfsizlik kamchiligi hal qilinmaguncha yangi Release chiqarilmaydi.
-- **Hodisadan keyingi tahlil (post-mortem):** har bir jiddiy hodisadan so'ng, kelgusida takrorlanmasligi uchun sabab va tuzatish choralari hujjatlashtiriladi (`ACTION_PLAN.md`ga muvofiq, `DEVELOPMENT_RULES.md`, 25-band).
+- **Hodisadan keyingi tahlil (post-mortem):** har bir jiddiy hodisadan so'ng, kelgusida takrorlanmasligi uchun sabab va tuzatish choralari hujjatlashtiriladi (`docs/ACTION_PLAN.md`ga muvofiq, `DEVELOPMENT_RULES.md`, 25-band).
 
 ## Security Checklist
 
@@ -159,4 +159,4 @@ Har bir Release oldidan (`DEVELOPMENT_RULES.md`, 22-band — Security Audit) quy
 - [ ] Nozik endpointlar uchun rate limiting ishlayotgani tekshirilgan.
 - [ ] Backup/tiklash jarayoni so'nggi marta muvaffaqiyatli sinovdan o'tgan.
 - [ ] Monitoring/alerting kanallari faol va mas'ul shaxslarga yetib borayotgani tasdiqlangan.
-- [ ] Aniqlangan barcha xavfsizlik topilmalari `ACTION_PLAN.md`ga yozilgan va critical darajadagilar yopilgan.
+- [ ] Aniqlangan barcha xavfsizlik topilmalari `docs/ACTION_PLAN.md`ga yozilgan va critical darajadagilar yopilgan.

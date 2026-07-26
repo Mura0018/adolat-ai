@@ -38,7 +38,7 @@ MVP quyidagi tasdiqlangan ko'lam asosida aniqlangan (`docs/DATABASE.md`, "MVP do
 - SMS/email kabi qo'shimcha xabarnoma kanallari (faqat push).
 - Qonun moddalari versiyalash tarixi.
 
-Yuqoridagi chegaralar `docs/DATABASE.md`da batafsil asoslangan; kelgusi g'oyalar `IDEA_PARKING.md`ga yoziladi (`docs/DEVELOPMENT_RULES.md`, 8-band).
+Yuqoridagi chegaralar `docs/DATABASE.md`da batafsil asoslangan; kelgusi g'oyalar `docs/IDEA_PARKING.md`ga yoziladi (`docs/DEVELOPMENT_RULES.md`, 8-band).
 
 ## Development Phases
 
@@ -50,7 +50,7 @@ MVP'ga yetish quyidagi ketma-ket bosqichlarga bo'lingan. Har bir bosqich oldingi
 - **Bosqich 3 — Nizo (Disputes) va AI tahlili:** ikki tomonli nizo yaratish, tomonlar faktlarini taqdim etishi, AI Service integratsiyasi va tarafsiz tahlil natijasini ko'rsatish.
 - **Bosqich 4 — Offline-First va Sinxronizatsiya:** Local Storage, Sync Engine, Conflict Resolution va Network State Handling mexanizmlarining to'liq implementatsiyasi (`docs/ARCHITECTURE.md`dagi tegishli bo'limlarga muvofiq) — murojaat/nizo va fayl oqimlariga bog'lab.
 - **Bosqich 5 — Admin paneli va xabarnomalar:** admin uchun boshqaruv interfeysi (ma'lumotnomalar, holat boshqaruvi, audit jurnali ko'rish) va push xabarnoma tizimining to'liq ishga tushirilishi.
-- **Bosqich 6 — Mustahkamlash, audit va reliz tayyorgarligi:** Security/Performance/UX auditlari, aniqlangan kamchiliklarni yopish (`ACTION_PLAN.md` orqali), reliz oldidan yakuniy tekshiruv (`docs/SECURITY.md`, "Security Checklist" bo'limi).
+- **Bosqich 6 — Mustahkamlash, audit va reliz tayyorgarligi:** Security/Performance/UX auditlari, aniqlangan kamchiliklarni yopish (`docs/ACTION_PLAN.md` orqali), reliz oldidan yakuniy tekshiruv (`docs/SECURITY.md`, "Security Checklist" bo'limi).
 
 Bosqichlar orasidagi chegara qat'iy emas — keyingi bosqich boshlanishi joriy bosqichning audit talabidan o'tishiga bog'liq (`docs/DEVELOPMENT_RULES.md`, 23-band).
 
@@ -162,4 +162,4 @@ MVP quyidagi shartlarning **barchasi** bajarilmaguncha reliz sifatida chiqarilma
 - **RLS to'liq qamrovi:** `docs/DATABASE.md`dagi barcha 13 jadvalda RLS yoqilgan va har bir amal uchun aniq siyosat mavjudligi tasdiqlangan.
 - **"No Dead End Rule" tasdiqlangan:** barcha asosiy oqimlarda (autentifikatsiya, murojaat, nizo, sinxronizatsiya xatoligi) foydalanuvchiga har doim aniq keyingi qadam ko'rsatilishi qo'lda tekshirilgan (`docs/DEVELOPMENT_RULES.md`, 17–19-bandlar).
 - **Hujjat-kod muvofiqligi:** `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/SECURITY.md`, `docs/UI.md`da tavsiflangan xatti-harakat haqiqiy implementatsiya bilan mos, farqlar aniqlangan va hujjatlashtirilgan.
-- **Barcha aniqlangan kamchiliklar yopilgan:** oldingi bosqichlar va auditlarda topilgan barcha topilmalar `ACTION_PLAN.md`da yozilgan va yopilgan holatda (`docs/DEVELOPMENT_RULES.md`, 25-band).
+- **Barcha aniqlangan kamchiliklar yopilgan:** oldingi bosqichlar va auditlarda topilgan barcha topilmalar `docs/ACTION_PLAN.md`da yozilgan va yopilgan holatda (`docs/DEVELOPMENT_RULES.md`, 25-band).

@@ -499,7 +499,7 @@ profiles → audit_log (actor_id, ixtiyoriy, soft reference boshqa jadvallarga)
 
 ## Kelgusi bosqichlar uchun ataylab qoldirilgan (MVP'dan tashqarida)
 
-Quyidagilar `IDEA_PARKING.md`ga yozilishi tavsiya etiladi (`DEVELOPMENT_RULES.md`, 8-band):
+Quyidagilar `docs/IDEA_PARKING.md`ga yozilishi tavsiya etiladi (`DEVELOPMENT_RULES.md`, 8-band):
 
 - Yurist/operator roli va murojaat/nizoni tayinlash (assignment) jadvali
 - Ko'p tomonli nizolar uchun `dispute_parties` junction jadvali

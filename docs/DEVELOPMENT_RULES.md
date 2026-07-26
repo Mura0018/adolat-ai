@@ -15,7 +15,7 @@ Bu hujjat **Adolat AI** loyihasi bo'yicha majburiy standart hisoblanadi.
 5. Mavjud kod va hujjatlar o'qilmasdan yangi kod yozilmaydi.
 6. Clean Architecture majburiy.
 7. DRY (Don't Repeat Yourself) tamoyiliga amal qilinadi.
-8. MVP chegarasidan tashqaridagi barcha g'oyalar IDEA_PARKING.md ga yoziladi.
+8. MVP chegarasidan tashqaridagi barcha g'oyalar `docs/IDEA_PARKING.md` ga yoziladi.
 9. Har bir API va Database o'zgarishi hujjatlashtiriladi.
 10. Har bir muhim o'zgarish alohida Git commit bilan saqlanadi.
 
@@ -46,7 +46,7 @@ Bu hujjat **Adolat AI** loyihasi bo'yicha majburiy standart hisoblanadi.
     majburiy.
 23. Audit natijasi 95 balldan past bo'lsa, keyingi Sprint boshlanmaydi.
 24. Critical xavfsizlik kamchiligi mavjud bo'lsa, Release taqiqlanadi.
-25. Har bir audit kamchiligi ACTION_PLAN.md ga yoziladi va yopilgandan keyingina Sprint yakunlanadi.
+25. Har bir audit kamchiligi `docs/ACTION_PLAN.md` ga yoziladi va yopilgandan keyingina Sprint yakunlanadi.
 
 ## Ish tartibi
 
