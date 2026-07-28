@@ -160,9 +160,11 @@ flutter --version
 flutter doctor
 ```
 
-### 2. Platforma papkalarini generatsiya qilish (android/ios/web)
+### 2. Platforma papkalari (android/ios/web)
 
-Bu skeletda `android/`, `ios/`, `web/` papkalari **yo'q** — ular qo'lda soxta yaratilmagan (bu xato va ishonchsiz bo'lardi). Loyiha ildizida quyidagini ishga tushiring:
+`android/`, `ios/`, `web/` papkalari repozitoriyda **commit qilingan** (2026-07-28'dan boshlab, `chore(flutter): add Android/iOS/Web platform scaffolding` commiti) — oddiy `git clone` qilingandan so'ng ular allaqachon mavjud bo'ladi, alohida generatsiya qilish shart emas.
+
+Agar biror sababdan (masalan `.gitignore` xatosi yoki qo'lda o'chirish) bu papkalar mavjud bo'lmasa, ularni qayta generatsiya qilish uchun loyiha ildizida quyidagini ishga tushiring:
 
 ```bash
 flutter create --platforms=android,ios,web --org com.adolatai .
@@ -212,7 +214,9 @@ flutter run
 ### Qisqacha buyruqlar ketma-ketligi
 
 ```bash
-flutter create --platforms=android,ios,web --org com.adolatai .
+# git clone'dan keyin android/ios/web allaqachon mavjud (commit qilingan);
+# faqat ular yo'qolgan/yetishmayotgan holatda quyidagi qatorni ishga tushiring:
+# flutter create --platforms=android,ios,web --org com.adolatai .
 flutter pub get
 flutter gen-l10n
 flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...

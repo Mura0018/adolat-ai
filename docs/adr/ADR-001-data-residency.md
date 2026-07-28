@@ -41,7 +41,7 @@ Adolat AI davlat organlariga yuboriladigan murojaatlar (`appeals`) va fuqarolar/
 
 **C. To'liq mustaqil migratsiya — O'zbekiston hududida joylashgan mustaqil boshqariladigan PostgreSQL + o'z Auth/Storage yechimi**
 - ➕ Eng yuqori huquqiy ishonch darajasi; uzoq muddatda platformadan mustaqillik (vendor lock-in yo'qoladi).
-- ➖ Eng qimmat va eng uzoq variant: Supabase Auth'dan parol hash'larini eksport qilish odatda mumkin emas — bu **barcha mavjud foydalanuvchilar uchun majburiy parolni tiklash** talab qiladi; barcha RLS siyosatlari (hozirgi 2 ta migratsiya, 26 siyosat + 4 funksiya) muqobil avtorizatsiya modeliga (masalan o'z middleware/API qatlami) qayta yozilishi kerak; Storage butunlay ko'chiriladi.
+- ➖ Eng qimmat va eng uzoq variant: Supabase Auth'dan parol hash'larini eksport qilish odatda mumkin emas — bu **barcha mavjud foydalanuvchilar uchun majburiy parolni tiklash** talab qiladi; barcha RLS siyosatlari (hozirgi 3 ta migratsiya — `rls_policies`, `storage_foundation`, `authorization_hardening` — jami 38 siyosat, shundan 26 tasi 4 ta markazlashtirilgan funksiya orqali qayta yozilgan, qolgan 12 tasi hali eski inline naqshda) muqobil avtorizatsiya modeliga (masalan o'z middleware/API qatlami) qayta yozilishi kerak; Storage butunlay ko'chiriladi.
 
 **D. Gibrid — nozik PII (fuqaro F.I.Sh, telefon, murojaat/nizo matni) mahalliy serverda, nozik bo'lmagan/agregatlangan ma'lumot (masalan `legal_categories`, `laws` lug'ati) Supabase'da qoladi**
 - ➕ Eng nozik ma'lumot uchun muvofiqlikni ta'minlaydi, boshqariladigan xizmatning ba'zi afzalliklarini saqlaydi.
@@ -72,7 +72,7 @@ Agar bu masala hal qilinmasdan qoldirilsa, har bir keyingi Phase (6, 7, ...) yan
 
 Agar variant C yoki D tanlansa:
 - **Auth:** barcha foydalanuvchilar uchun majburiy parolni tiklash (Supabase parol hash formatini eksport qilib bo'lmaydi) — bu foydalanuvchi tajribasiga sezilarli ta'sir qiladi va alohida xabar/UX rejasi talab qiladi.
-- **Database:** 4 ta mavjud migratsiya (`20260726000001`–`20260728000001`) yangi platforma uchun qayta yozilishi yoki moslashtirilishi kerak; RLS ekvivalenti (agar Postgres asosli bo'lmasa) noldan loyihalanadi.
+- **Database:** 5 ta mavjud migratsiya (`20260726000001`–`20260728000001`) yangi platforma uchun qayta yozilishi yoki moslashtirilishi kerak; RLS ekvivalenti (agar Postgres asosli bo'lmasa) noldan loyihalanadi.
 - **Storage:** barcha yuklangan fayllar (`attachments.storage_path`) yangi joylashuvga ko'chiriladi, yo'llar qayta xaritalanadi.
 - **Flutter klient:** `services/supabase/` qatlamidagi barcha kod (`SupabaseService`, datasource'lar) almashtiriladi — bu Clean Architecture tufayli **faqat `data/` qatlamiga cheklanadi** (`domain`/`presentation` tegilmaydi), bu joriy arxitektura tanlovining to'g'ri ekanligini tasdiqlaydi.
 - Bu "big bang" migratsiya bo'lib, rejalashtirilgan downtime yoki uzoq parallel-run davri talab qilishi mumkin.
