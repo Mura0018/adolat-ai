@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../ai_service/data/session/in_memory_conversation_repository.dart';
 import '../../ai_service/domain/entities/ai_conversation_status.dart';
 import '../../ai_service/domain/entities/ai_message.dart';
+import '../../ai_service/domain/repositories/conversation_exceptions.dart';
 
 void main() {
   group('InMemoryConversationRepository', () {
@@ -50,7 +51,7 @@ void main() {
 
       expect(
         () => repository.appendMessage('unknown', message),
-        throwsStateError,
+        throwsA(isA<ConversationNotFoundException>()),
       );
     });
 
@@ -67,7 +68,7 @@ void main() {
 
       expect(
         () => repository.appendMessage(conversation.id, message),
-        throwsStateError,
+        throwsA(isA<ConversationClosedException>()),
       );
     });
 
@@ -84,7 +85,10 @@ void main() {
     test('close throws for an unknown conversation', () {
       final repository = InMemoryConversationRepository();
 
-      expect(() => repository.close('unknown'), throwsStateError);
+      expect(
+        () => repository.close('unknown'),
+        throwsA(isA<ConversationNotFoundException>()),
+      );
     });
   });
 }

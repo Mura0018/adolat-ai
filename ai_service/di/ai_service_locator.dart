@@ -7,7 +7,14 @@ import '../data/repositories/ai_repository_impl.dart';
 import '../data/session/in_memory_cancellation_registry.dart';
 import '../data/session/in_memory_conversation_repository.dart';
 import '../domain/entities/ai_provider_id.dart';
+import '../domain/repositories/ai_cancellation_registry.dart';
 import '../domain/repositories/ai_repository.dart';
+import '../domain/repositories/conversation_repository.dart';
+import '../domain/retry/ai_retry_policy.dart';
+import '../domain/usecases/cancel_conversation_usecase.dart';
+import '../domain/usecases/close_conversation_usecase.dart';
+import '../domain/usecases/send_conversation_message_usecase.dart';
+import '../domain/usecases/start_conversation_usecase.dart';
 import '../presentation/ai_service_handler.dart';
 import '../safety/ai_safety_service.dart';
 
@@ -31,6 +38,7 @@ class AIServiceLocator {
   static AIServiceHandler build({
     required Map<AIProviderId, String> providerCredentials,
     required AISafetyService safetyService,
+    AIRetryPolicy retryPolicy = const AIRetryPolicy(),
   }) {
     final providers = <AIProviderId, AIProviderAdapter>{
       if (providerCredentials[AIProviderId.openAI] case final apiKey?)
@@ -48,10 +56,21 @@ class AIServiceLocator {
       safetyService: safetyService,
     );
 
+    final ConversationRepository conversationRepository =
+        InMemoryConversationRepository();
+    final AICancellationRegistry cancellationRegistry =
+        InMemoryCancellationRegistry();
+
     return AIServiceHandler(
-      repository: repository,
-      conversationRepository: InMemoryConversationRepository(),
-      cancellationRegistry: InMemoryCancellationRegistry(),
+      startConversationUseCase: StartConversationUseCase(conversationRepository),
+      sendConversationMessageUseCase: SendConversationMessageUseCase(
+        repository: repository,
+        conversationRepository: conversationRepository,
+        cancellationRegistry: cancellationRegistry,
+        retryPolicy: retryPolicy,
+      ),
+      cancelConversationUseCase: CancelConversationUseCase(cancellationRegistry),
+      closeConversationUseCase: CloseConversationUseCase(conversationRepository),
     );
   }
 }

@@ -1,5 +1,6 @@
 import '../../domain/entities/ai_conversation.dart';
 import '../../domain/entities/ai_message.dart';
+import '../../domain/repositories/conversation_exceptions.dart';
 import '../../domain/repositories/conversation_repository.dart';
 
 /// `ConversationRepository`ning xotiradagi (in-memory) implementatsiyasi
@@ -47,7 +48,7 @@ class InMemoryConversationRepository implements ConversationRepository {
   AIConversation appendMessage(String conversationId, AIMessage message) {
     final existing = _conversations[conversationId];
     if (existing == null) {
-      throw StateError('Suhbat topilmadi: $conversationId');
+      throw ConversationNotFoundException(conversationId);
     }
     final updated = existing.appendMessage(message);
     _conversations[conversationId] = updated;
@@ -58,7 +59,7 @@ class InMemoryConversationRepository implements ConversationRepository {
   AIConversation close(String conversationId) {
     final existing = _conversations[conversationId];
     if (existing == null) {
-      throw StateError('Suhbat topilmadi: $conversationId');
+      throw ConversationNotFoundException(conversationId);
     }
     final closed = existing.close(closedAt: DateTime.now());
     _conversations[conversationId] = closed;

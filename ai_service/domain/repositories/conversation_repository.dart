@@ -20,12 +20,13 @@ abstract interface class ConversationRepository {
   /// Mavjud suhbatga xabar qo'shadi va yangilangan nusxani qaytaradi.
   ///
   /// Tashlaydi:
-  /// - `StateError` — suhbat topilmasa.
-  /// - `StateError` — suhbat allaqachon yopilgan bo'lsa
-  ///   (`AIConversation.appendMessage`ga qarang).
+  /// - `ConversationNotFoundException` — suhbat topilmasa.
+  /// - `ConversationClosedException` — suhbat allaqachon yopilgan
+  ///   bo'lsa (`AIConversation.appendMessage`ga qarang).
   AIConversation appendMessage(String conversationId, AIMessage message);
 
   /// Suhbatni yopadi (`AIConversationStatus.closed`) va yangilangan
-  /// nusxani qaytaradi. Suhbat topilmasa `StateError` tashlaydi.
+  /// nusxani qaytaradi. Suhbat topilmasa `ConversationNotFoundException`
+  /// tashlaydi.
   AIConversation close(String conversationId);
 }

@@ -1,3 +1,4 @@
+import 'ai_failure.dart';
 import 'ai_response.dart';
 
 /// `AIRepository.sendMessage()` chiqaradigan oqim hodisasi — Module 4
@@ -34,13 +35,17 @@ final class AIStreamEventCancelled extends AIStreamEvent {
   const AIStreamEventCancelled();
 }
 
-/// Provayder yoki xavfsizlik qatlami xatolik qaytardi. `message` —
-/// xom xatolik emas, allaqachon xavfsiz (foydalanuvchiga ko'rsatilishi
-/// mumkin bo'lgan) matn bo'lishi kerak — flutter klientdagi
-/// `Failure`/`describeErrorForUser()` konventsiyasiga muvofiq
-/// (docs/ARCHITECTURE.md, "Error Handling").
+/// Provayder, xavfsizlik qatlami yoki suhbat orkestratsiyasi xatolik
+/// qaytardi. `failure` — xom matn emas, tur-xavfsiz `AIFailure`
+/// (`ai_failure.dart`, Phase 2C talabi: "Error abstraction") — shu
+/// orqali `AIRetryExecutor` xatolik qayta urinishga mosligini
+/// (`AIFailure.isRetryable`) tekshira oladi, va chaqiruvchi tomon
+/// foydalanuvchiga ko'rsatiladigan matnni keyingi bosqichda (haqiqiy
+/// backend integratsiyasida) xatolik TURIGA qarab tanlay oladi —
+/// flutter klientdagi `Failure`/`describeErrorForUser()`
+/// konventsiyasiga muvofiq (docs/ARCHITECTURE.md, "Error Handling").
 final class AIStreamEventError extends AIStreamEvent {
-  const AIStreamEventError({required this.message});
+  const AIStreamEventError({required this.failure});
 
-  final String message;
+  final AIFailure failure;
 }

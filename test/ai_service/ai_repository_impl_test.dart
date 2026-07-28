@@ -5,6 +5,7 @@ import '../../ai_service/data/repositories/ai_repository_impl.dart';
 import '../../ai_service/domain/entities/ai_cancellation_token.dart';
 import '../../ai_service/domain/entities/ai_context.dart';
 import '../../ai_service/domain/entities/ai_conversation.dart';
+import '../../ai_service/domain/entities/ai_failure.dart';
 import '../../ai_service/domain/entities/ai_provider_id.dart';
 import '../../ai_service/domain/entities/ai_request.dart';
 import '../../ai_service/domain/entities/ai_response.dart';
@@ -104,6 +105,10 @@ void main() {
       expect(adapter.wasCalled, isFalse);
       expect(events, hasLength(1));
       expect(events.single, isA<AIStreamEventError>());
+      expect(
+        (events.single as AIStreamEventError).failure,
+        isA<AIProviderNotConfiguredFailure>(),
+      );
     });
 
     test('errors without calling the adapter when the safety check fails', () async {
@@ -123,10 +128,10 @@ void main() {
 
       expect(adapter.wasCalled, isFalse);
       expect(events.single, isA<AIStreamEventError>());
-      expect(
-        (events.single as AIStreamEventError).message,
-        'blocked in test',
-      );
+      final failure = (events.single as AIStreamEventError).failure;
+      expect(failure, isA<AISafetyRejectionFailure>());
+      expect((failure as AISafetyRejectionFailure).reason, 'blocked in test');
+      expect(failure.isRetryable, isFalse);
     });
 
     test('short-circuits to cancelled when the token is already cancelled', () async {

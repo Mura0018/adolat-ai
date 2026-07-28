@@ -1,3 +1,4 @@
+import '../repositories/conversation_exceptions.dart';
 import 'ai_conversation_status.dart';
 import 'ai_message.dart';
 
@@ -33,16 +34,15 @@ class AIConversation {
   /// boshqaradi (`domain/repositories/conversation_repository.dart`).
   ///
   /// **Lifecycle qoidasi:** yopilgan suhbatga xabar qo'shib bo'lmaydi —
-  /// bu chaqiruvchi kodning xatosi (dasturlash xatosi), foydalanuvchi
-  /// kiritgan noto'g'ri ma'lumot emas, shuning uchun `StateError`
-  /// tashlanadi (`Failure`/`Result<T>` konventsiyasi emas — bu
-  /// zanjirning yuqorisida, `docs/AI_ARCHITECTURE.md`dagi "Request
-  /// Flow"da hal qilinishi kutiladi).
+  /// bu kutilgan, oldindan bilingan ish vaqti holati (dasturlash xatosi
+  /// emas), shuning uchun aniq ajraladigan `ConversationClosedException`
+  /// tashlanadi (`../repositories/conversation_exceptions.dart`, Phase
+  /// 2C talabi: "Error abstraction") — chaqiruvchi qatlam
+  /// (`domain/usecases/send_conversation_message_usecase.dart`) buni
+  /// aniq `catch` qilib, mos `AIFailure` variantiga tarjima qiladi.
   AIConversation appendMessage(AIMessage message) {
     if (isClosed) {
-      throw StateError(
-        'Yopilgan suhbatga xabar qo\'shib bo\'lmaydi: $id',
-      );
+      throw ConversationClosedException(id);
     }
     return AIConversation(
       id: id,
@@ -53,7 +53,7 @@ class AIConversation {
     );
   }
 
-  /// Suhbatni yopadi — shundan keyin [appendMessage] `StateError`
+  /// Suhbatni yopadi — shundan keyin [appendMessage] `ConversationClosedException`
   /// tashlaydi. Allaqachon yopilgan suhbatni qayta yopish xavfsiz
   /// (idempotent), yangi nusxa qaytaradi lekin holat o'zgarmaydi.
   AIConversation close({required DateTime closedAt}) {

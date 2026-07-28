@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../ai_service/domain/entities/ai_conversation.dart';
 import '../../ai_service/domain/entities/ai_conversation_status.dart';
 import '../../ai_service/domain/entities/ai_message.dart';
+import '../../ai_service/domain/repositories/conversation_exceptions.dart';
 
 AIConversation _conversation({AIConversationStatus status = AIConversationStatus.active}) {
   final now = DateTime(2026, 1, 1);
@@ -33,7 +34,7 @@ void main() {
       expect(updated.updatedAt, message.createdAt);
     });
 
-    test('throws StateError when the conversation is closed', () {
+    test('throws ConversationClosedException when the conversation is closed', () {
       final closed = _conversation(status: AIConversationStatus.closed);
       final message = AIMessage(
         id: 'm1',
@@ -42,7 +43,10 @@ void main() {
         createdAt: DateTime(2026, 1, 2),
       );
 
-      expect(() => closed.appendMessage(message), throwsStateError);
+      expect(
+        () => closed.appendMessage(message),
+        throwsA(isA<ConversationClosedException>()),
+      );
     });
   });
 

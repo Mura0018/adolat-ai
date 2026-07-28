@@ -1,6 +1,7 @@
 import '../../domain/entities/ai_cancellation_token.dart';
 import '../../domain/entities/ai_context.dart';
 import '../../domain/entities/ai_conversation.dart';
+import '../../domain/entities/ai_failure.dart';
 import '../../domain/entities/ai_provider_id.dart';
 import '../../domain/entities/ai_request.dart';
 import '../../domain/entities/ai_stream_event.dart';
@@ -34,7 +35,7 @@ class AIRepositoryImpl implements AIRepository {
     final adapter = _providers[providerId];
     if (adapter == null) {
       yield AIStreamEventError(
-        message: 'Ro\'yxatdan o\'tmagan AI provayder: $providerId',
+        failure: AIProviderNotConfiguredFailure(providerId: providerId),
       );
       return;
     }
@@ -52,7 +53,9 @@ class AIRepositoryImpl implements AIRepository {
     final requestCheck = await _safetyService.validateRequest(request);
     if (!requestCheck.isSafe) {
       yield AIStreamEventError(
-        message: requestCheck.reason ?? 'So\'rov xavfsizlik tekshiruvidan o\'tmadi',
+        failure: AISafetyRejectionFailure(
+          reason: requestCheck.reason ?? 'So\'rov xavfsizlik tekshiruvidan o\'tmadi',
+        ),
       );
       return;
     }
