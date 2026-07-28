@@ -193,14 +193,27 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<AppUser?> get authStateChanges {
-    return _remote.onAuthStateChange.asyncMap((state) async {
-      final userId = state.session?.user.id;
-      if (userId == null) return null;
-      try {
-        return await _resolveAppUser(userId);
-      } catch (_) {
-        return null;
-      }
-    });
+    // `onAuthStateChange` shu foydalanuvchi uchun (masalan tokenRefreshed —
+    // taxminan har soatda avtomatik) qayta-qayta o'qiladi, garchi
+    // `user.id` o'zgarmagan bo'lsa ham. `distinct()` faqat haqiqiy
+    // identifikator o'zgarishida (kirish/chiqish/foydalanuvchi almashishi)
+    // qimmat ikki so'rovli `_resolveAppUser`ni chaqiradi — profil
+    // ma'lumotining o'zi shu oqim orqali kuzatilmaydi (u faqat sessiya
+    // hodisalariga reaksiya qiladi, bu cheklov o'zgartirishdan oldin ham
+    // bor edi).
+    return _remote.onAuthStateChange
+        .distinct(
+          (previous, next) =>
+              previous.session?.user.id == next.session?.user.id,
+        )
+        .asyncMap((state) async {
+          final userId = state.session?.user.id;
+          if (userId == null) return null;
+          try {
+            return await _resolveAppUser(userId);
+          } catch (_) {
+            return null;
+          }
+        });
   }
 }
