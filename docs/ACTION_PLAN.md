@@ -115,7 +115,7 @@ Quyidagi jadvallar loyiha tarixida hozirgacha o'tkazilgan barcha audit va tekshi
 | Offline-First talab va Phase 2/3'da qurilgan repository shartnomalari o'rtasidagi moslik aniq emas | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 4'dan oldin | ADR hali yozilmagan (`docs/adr/README.md`da ADR-006 sifatida rejalashtirilgan). |
 | Ro'yxat (list) endpointlarida pagination yo'q (`listMine()` va h.k.) | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6'dan oldin | ADR hali yozilmagan. |
 | Yassi 3 rolli model (`citizen`/`organization`/`admin`) operatsion miqyoslanish chegarasi | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 5 (Admin paneli) | ADR hali yozilmagan. |
-| Avtomatlashtirilgan test va CI yo'q | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6'dan oldin | ADR hali yozilmagan. |
+| Avtomatlashtirilgan test va CI yo'q | High | Done | Claude Code | 2026-07-28 | Bosqich 6'dan oldin | 2 ta test fayli (`test/core/`) va `.github/workflows/ci.yml` qo'shildi; GitHub Actions'da haqiqiy yashil (success) run bilan tasdiqlangan (commit `e411d0e`). |
 | Fayl yuklashda magic-byte tekshiruvi yo'q, virus skanerlash yo'q, backup RPO/RTO belgilanmagan, AI vendor hosting hal qilinmagan, yagona til (o'zbek), bitta Supabase mintaqasi, push vendor tanlanmagan | Medium/Low | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6 doirasida | To'liq tavsif Zero-Regret Audit hisobotida (ushbu suhbat tarixida); alohida ADR talab qilinmaydi, Bosqich 6 rejalashtirishda ko'rib chiqiladi. |
 
 ### 8. Final Project Readiness Review — 2026-07-28 (davom etmoqda)
@@ -129,10 +129,10 @@ Quyidagi jadvallar loyiha tarixida hozirgacha o'tkazilgan barcha audit va tekshi
 | Katta hajmdagi tekshirilgan/audit qilingan ish hech qachon commit qilinmagan edi | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | 5 ta mantiqiy commit orqali (568271b, b4f3024, 43319b5, 542f9cf, 1d0cba5) barchasi commit va push qilindi. |
 | `docs/ACTION_PLAN.md` hech qachon haqiqiy topilma olmagan edi | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Ushbu bo'lim (8 ta audit manbai, barcha topilmalar) yozildi va commit qilindi (`02516df`). |
 | `lib/features/README.md` eskirgan ("bo'sh" deb yozilgan, 5 ta feature mavjud) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Haqiqiy 5 ta feature ro'yxati bilan yangilandi va commit qilindi (`02516df`). |
-| ADR-001'da sonli xatolar bor edi (4 ta migratsiya o'rniga 5 ta; 2 ta migratsiya o'rniga 3 ta, 26 siyosat o'rniga 38) | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan, navbatdagi blocker sifatida kutilmoqda. |
-| ROADMAP.md ADR jarayoniga umuman ishora qilmaydi | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan. |
-| `android`/`ios`/`web` commit qilinishi kerakmi degan qoida SETUP.md va .gitignore o'rtasida hal qilinmagan | High | Open | Loyiha egasi | 2026-07-28 | — | Loyiha egasining qarorini talab qiladi. |
-| Avtomatlashtirilgan test va CI yo'q (Zero-Regret Audit bilan bir xil topilma) | High | Open | Tayinlanmagan | 2026-07-28 | — | Yuqoridagi 7-bo'limdagi bir xil yozuvga qarang, ikki marta hisoblanmaydi. |
+| ADR-001'da sonli xatolar bor edi (4 ta migratsiya o'rniga 5 ta; 2 ta migratsiya o'rniga 3 ta, 26 siyosat o'rniga 38) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | ADR-001'dagi ikkala raqamli xato tuzatildi (commit `b7dae30`). |
+| ROADMAP.md ADR jarayoniga umuman ishora qilmaydi | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | ROADMAP.md'ga `docs/adr/README.md`ga ikkita o'zaro havola qo'shildi (commit `b7dae30`). |
+| `android`/`ios`/`web` commit qilinishi kerakmi degan qoida SETUP.md va .gitignore o'rtasida hal qilinmagan | High | Done | Loyiha egasi | 2026-07-28 | 2026-07-28 | Qoida amalda hal qilindi (papkalar commit `1d0cba5`da qo'shilgan); SETUP.md shu holatga mos yangilandi (commit `b7dae30`). |
+| Avtomatlashtirilgan test va CI yo'q (Zero-Regret Audit bilan bir xil topilma) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Yuqoridagi 7-bo'limdagi bir xil yozuvga qarang — ikkalasi bir xil tuzatish bilan yopildi, ikki marta hisoblanmaydi. |
 | `pubspec.lock` avval kuzatilmagan edi | Medium | Done | Claude Code | 2026-07-28 | 2026-07-28 | Blocker #3 doirasida commit qilindi (`1d0cba5`). |
 | 12 ta eski RLS siyosati hali yangi funksiyalarga o'tkazilmagan | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Xatti-harakat to'g'ri, faqat izchillik masalasi; shoshilinch emas. |
 | Bog'liqliklar versiyasi eskirgan (36 ta paket) | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Oddiy texnik xizmat, shoshilinch emas. |
