@@ -1,4 +1,4 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–2C)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–3A)
 
 Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.**
 
@@ -7,6 +7,8 @@ Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan A
 **Phase 2B yangilanishi:** `UserContext.role` va `CaseContext.caseType` xom `String`dan tur-xavfsiz enum'ga (`AIUserRole`, `AICaseType`) o'tkazildi; `CaseContext`ning invarianti kuchaytirildi (`caseType` endi mos ID bilan mos kelishi tekshiriladi). Yangi `ContextAssembler` — beshta kanonik context'ni (majburiy: System/User/Safety, ixtiyoriy: Case/Memory) tur-xavfsiz, kompilyatsiya vaqtida tekshiriladigan tarzda yig'uvchi yuqori daraja — "Prompt Pipeline / Context Assembler" bo'limiga qarang.
 
 **Phase 2C yangilanishi:** Orkestratsiya mantig'i (suhbat tarixi bilan bog'lanish, qayta urinish) `AIServiceHandler`dan (kirish nuqtasi) `domain/usecases/`ga ko'chirildi — `AIServiceHandler` endi faqat delegatsiya qiluvchi "yupqa" (thin) qatlam. Xom `String message` o'rniga tur-xavfsiz `AIFailure` xatolik ierarxiyasi kiritildi (`isRetryable` xususiyati bilan); `ConversationRepository`/`AIConversation` endi umumiy `StateError` o'rniga aniq ajraladigan `ConversationNotFoundException`/`ConversationClosedException` tashlaydi. Yangi `AIRetryPolicy`/`AIRetryExecutor` — streaming-xavfsiz (allaqachon chiqarilgan `chunk`lardan keyin qayta urinilmaydi) qayta urinish mexanizmi. Quyidagi "AI UseCases & Orkestratsiya", "Xatolik Abstraksiyasi" va "Qayta Urinish Abstraksiyasi" bo'limlariga qarang.
+
+**Phase 3A yangilanishi:** Yangi `protocol/` papkasi — Flutter klient ↔ backend orasidagi SIMLI (wire) shartnoma, `domain/`dagi ICHKI kontraktlardan (`AIRequest`/`AIResponse`/`AIStreamEvent`) ATAYLAB mustaqil. `AIRequestEnvelope`/`AIResponseEnvelope` (JSON serializatsiya bilan), `AIProtocolStreamEvent` (5 holat: `started`/`chunk`/`completed`/`cancelled`/`failed`), `AIProtocolError` (provayderdan mustaqil, barqaror xatolik kodlari) va `AIProtocolVersion` (kelgusi sxema yangilanishlari uchun). Quyidagi "Klient ↔ Backend Protokoli" bo'limiga qarang.
 
 ## Nega `lib/`dan tashqarida
 
@@ -23,6 +25,12 @@ flowchart TB
     end
 
     subgraph Backend["Backend / Serverless (kelgusi joylashtirish)"]
+        subgraph Protocol["protocol/ — sof Dart, JSON serializatsiya"]
+            ReqEnv["AIRequestEnvelope"]
+            RespEnv["AIResponseEnvelope"]
+            StreamEv["AIProtocolStreamEvent\n(started/chunk/completed/\ncancelled/failed)"]
+            ProtoErr["AIProtocolError"]
+        end
         subgraph Presentation["presentation/"]
             Handler["AIServiceHandler\n(yupqa kirish nuqtasi)"]
         end
@@ -65,6 +73,11 @@ flowchart TB
 
     DB[("Supabase\npublic.ai_analyses\n(faqat service role yozadi)")]
 
+    AIAnalysesFeature -."so'raydi (kelgusi integratsiya)".-> ReqEnv
+    ReqEnv -."kelgusi integratsiya\n(HTTP/WebSocket handler)".-> Handler
+    Handler -."kelgusi integratsiya".-> StreamEv
+    StreamEv --> RespEnv
+    StreamEv --> ProtoErr
     Handler --> StartUC
     Handler --> SendUC
     Handler --> CancelUC
@@ -109,6 +122,93 @@ flowchart TB
 8. **Yakunlanish** — `done`/`error`/`cancelled` hodisasida `AICancellationRegistry.release()` (yoki `cancel()`) chaqirilib, bekor qilish tokeni tozalanadi.
 
 Foundation bosqichida 5-qadam (xavfsizlik) har doim "xavfsiz" deb faraz qiluvchi test-double bilan, 6-qadam esa `UnimplementedError` bilan tugaydi (`ai_service/data/providers/*_adapter.dart`) — zanjirning **shakli** to'g'ri, **mazmuni** hali yo'q.
+
+## Klient ↔ Backend Protokoli (Module 4, Phase 3A)
+
+Yuqoridagi "Request Flow" — backend ICHIDAGI zanjir (`AIServiceHandler` dan boshlab). Bu bo'lim esa undan OLDINGI chegarani tasvirlaydi: Flutter klient bilan backend orasida SIMDAN (HTTP/WebSocket) qanday ma'lumot o'tishi kerakligi. Bu qatlam `ai_service/protocol/`da, **sof Dart, hech qanday Flutter/Riverpod bog'liqligisiz** — kelgusida backend haqiqiy Dart bo'lmagan muhitda (masalan boshqa til bilan yozilgan Edge Function) ishlasa ham, JSON shakli shu klasslarning `toJson()`/`fromJson()` natijasi orqali til-mustaqil hujjatlashtirilgan bo'ladi.
+
+**Nega `domain/entities/`dagi `AIRequest`/`AIResponse`/`AIStreamEvent`dan ALOHIDA:** ular backend ICHIDAGI, `AIRepository` ↔ `AIProviderAdapter` orasidagi jarayon-ichi (in-process) shartnoma — serializatsiya kerak emas va `providerId`ni o'z ichiga oladi. `protocol/`dagi konvertlar esa klient ↔ backend chegarasi — ATAYLAB `providerId`siz (qaysi provayder ishlatilishi klientning emas, backendning qarori, `docs/adr/ADR-005`) va ichki domain modelidan mustaqil (`context` maydoni xom `Map<String, dynamic>`, `AIContext`ga bog'lanmagan — ikkalasi mustaqil evolyutsiya qila oladi).
+
+**Bu bosqich faqat SHAKLNI belgilaydi — hech qanday integratsiya kodi yo'q:** `protocol/` klasslari `presentation/ai_service_handler.dart`ga ulanmagan, HTTP/WebSocket handler yo'q, `AIStreamEvent` ↔ `AIProtocolStreamEvent` tarjimasi yo'q. Bularning barchasi kelgusi integratsiya bosqichida qo'shiladi.
+
+### So'rov (Request) Lifecycle
+
+`AIRequestEnvelope` (`protocol/ai_request_envelope.dart`):
+
+| Maydon | Vazifasi |
+|---|---|
+| `requestId` | Har bir so'rovning o'ziga xos identifikatori — javobni (`AIResponseEnvelope.requestId`) va oqim hodisalarini (`AIProtocolStreamEvent.requestId`) so'rov bilan bog'lash uchun |
+| `conversationId` | Qaysi suhbatga tegishli |
+| `userId` | Kim so'ramoqda (audit/RLS uchun — `docs/DATABASE.md`) |
+| `message` | Foydalanuvchi xabari, xom matn |
+| `context` | Xom `Map<String, dynamic>` — ichki `AIContext`dan mustaqil (yuqoridagi izohga qarang) |
+| `attachments` | `List<AIAttachmentMetadata>` — fayl METADATASI (id/fileName/mimeType/sizeBytes/storageRef), fayl bayt(lar)i emas — alohida yuklash kanali orqali oldindan yuklanadi |
+| `requestedAt` | Klient tomonidagi so'rov vaqti |
+| `protocolVersion` | Standart holatda `AIProtocolVersion.current` |
+
+**Muhim dizayn qarori:** `AIRequestEnvelope`da `providerId` maydoni YO'Q. Provayder tanlovi butunlay backend qarori — aks holda klient provayder tanlab, `docs/adr/ADR-005`dagi vendor-fallback strategiyasini chetlab o'tishi mumkin bo'lardi.
+
+### Javob (Response) Lifecycle
+
+`AIResponseEnvelope` (`protocol/ai_response_envelope.dart`):
+
+| Maydon | Vazifasi |
+|---|---|
+| `responseId` | Javobning o'ziga xos identifikatori |
+| `requestId` | Qaysi so'rovga javob (talab ro'yxatida aniq sanalmagan, lekin qo'shilgan — bir nechta parallel so'rovni ajratish uchun zarur) |
+| `conversationId` | Qaysi suhbatga tegishli |
+| `assistantMessage` | To'liq javob matni — **faqat `status == completed` bo'lganda** nolldan farqli bo'lishi mumkin (`assert` bilan majburlangan) |
+| `status` | `AIProtocolStatus`: `completed`/`failed`/`cancelled` |
+| `tokenUsage` | `AITokenUsage` — joy ajratilgan (barcha maydonlar hozircha `null`) |
+| `latencyMs` | Joy ajratilgan (hozircha `null`) |
+| `receivedAt` / `respondedAt` | Backend so'rovni qabul qilgan/javobni yakunlagan vaqt |
+| `protocolVersion` | Javob qaysi sxema versiyasi bo'yicha shakllantirilgani |
+| `error` | **faqat `status == failed` bo'lganda** majburiy (`assert` bilan majburlangan) |
+
+Ikkala `assert` ham ichki `SendConversationMessageUseCase` konventsiyasi bilan bir xil qoidani simli protokol darajasida takrorlaydi: muvaffaqiyatsiz/bekor qilingan javob mazmun olib yurmaydi, faqat muvaffaqiyatli javob xatolik olib yurmaydi.
+
+### Protokol Versiyalash
+
+`AIProtocolVersion` (`protocol/ai_protocol_version.dart`) — butun `AIRequestEnvelope`/`AIResponseEnvelope`/`AIProtocolStreamEvent` sxemasi BITTA BIRLIK sifatida versiyalanadi (semver emas — oddiy butun son, `v1`, `v2`, ...). Har bir konvert o'zining `protocolVersion` maydonini olib yuradi, shuning uchun:
+
+- Backend migratsiya davrida bir nechta versiyani BIR VAQTNING O'ZIDA qo'llab-quvvatlashi mumkin (masalan eski klient ilovalari yangilanmagan bo'lsa).
+- Kelishmovchilik (breaking) o'zgarish — versiya oshiriladi, eski versiya bilan ishlash mantig'i alohida saqlanishi mumkin (kelgusi integratsiya bosqichi).
+- Standart holat har doim `AIProtocolVersion.current` (hozircha `v1`) — mavjud klient/testlar ushbu qiymatni aniq ko'rsatmasa ham to'g'ri ishlaydi.
+
+### Oqim (Streaming) Lifecycle
+
+`AIProtocolStreamEvent` (`protocol/ai_protocol_stream_event.dart`) — sealed klass, 5 holat:
+
+```mermaid
+stateDiagram-v2
+    [*] --> started: so'rov qabul qilindi
+    started --> chunk: birinchi bo'lak
+    chunk --> chunk: keyingi bo'lak(lar)
+    chunk --> completed: to'liq javob tayyor
+    started --> completed: (oqimsiz javob)
+    chunk --> cancelled: foydalanuvchi bekor qildi
+    started --> cancelled
+    chunk --> failed: xatolik
+    started --> failed
+    completed --> [*]
+    cancelled --> [*]
+    failed --> [*]
+```
+
+- **`started`** — ichki `AIStreamEvent`da YO'Q, faqat simli protokolga xos: backend so'rovni qabul qilganini bildiradi, klient "jim qolish = tarmoq kechikishi" bilan "jim qolish = so'rov umuman yetib bormadi"ni ajrata olsin.
+- **`chunk`** — qisman matn (`sequence` + `deltaContent`), `AIStreamEventChunk`ga mos.
+- **`completed`** — to'liq `AIResponseEnvelope` (`status == completed`) olib yuradi.
+- **`cancelled`** / **`failed`** — mos ravishda `AIStreamEventCancelled`/`AIStreamEventError`ga parallel, `failed` `AIProtocolError` olib yuradi.
+
+Har bir variant `toJson()`da `'type'` ajratuvchi (discriminator) maydonini yozadi; `AIProtocolStreamEvent.fromJson()` shu maydon bo'yicha to'g'ri variantni tanlaydi — JSON'ning o'zida Dart'ning sealed tur tizimi yo'qligi uchun zarur.
+
+### Xatolik Oqimi (Error Flow)
+
+`AIProtocolError`/`AIProtocolErrorCode` (`protocol/ai_protocol_error.dart`) — provayderdan mustaqil, BARQAROR (stable) xatolik kodlari: `network`, `timeout`, `rateLimited`, `providerError`, `safetyRejected`, `providerNotConfigured`, `conversationNotFound`, `conversationClosed`, `invalidRequest` (klient noto'g'ri so'rov yuborsa — ichki `AIFailure`da yo'q, chunki bu backend emas, KLIENT xatosi), `unknown`.
+
+**`AIFailure` (Phase 2C) bilan ADASHTIRILMASIN:** `AIFailure` — Dart sealed klass, faqat backend ichida. `AIProtocolError.code` — Dart turi emas, string-asosli ENUM QIYMATI, chunki JSON orqali istalgan til/platformaga yetib borishi kerak va versiyalar osha nomi barqaror qolishi shart. `AIFailure` → `AIProtocolError` tarjimasi (masalan `AINetworkFailure` → `AIProtocolErrorCode.network`) kelgusi integratsiya bosqichida qo'shiladi — bu bosqich faqat ikkala tomonning MUSTAQIL SHAKLINI belgilaydi.
+
+`retryable: bool` maydoni `AIFailure.isRetryable`ning simli ko'rinishi — klient shu bayroqqa qarab "qayta urinish" tugmasini ko'rsatish/ko'rsatmaslikni hal qila oladi, Dart tur ierarxiyasini bilishga muhtoj bo'lmasdan.
 
 ## Provider Abstraction
 
