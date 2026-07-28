@@ -18,6 +18,7 @@ Bu papka **Zero-Regret Audit** (Phase 6'dan oldingi arxitektura auditi) davomida
 | [ADR-003](./ADR-003-law-versioning.md) | AI huquqiy iqtiboslari uchun qonun moddalari versiyalash | High | Taklif qilingan |
 | [ADR-004](./ADR-004-ai-cost-governance.md) | AI xarajatini boshqarish va suiiste'moldan himoya | High | Taklif qilingan |
 | [ADR-005](./ADR-005-ai-vendor-fallback.md) | AI vendor uzilishi/fallback strategiyasi | High/Medium | Taklif qilingan |
+| [ADR-006](./ADR-006-hybrid-infrastructure-strategy.md) | Hybrid Infrastructure Strategy — sezgir ma'lumot chegarasi va vendor mustaqilligi | High | Qabul qilingan (2026-07-28) |
 
 ## Navbatdagi ADR'lar (hali yozilmagan)
 

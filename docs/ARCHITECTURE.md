@@ -91,6 +91,15 @@ Generatsiya qilingan `*.freezed.dart`/`*.g.dart` fayllar `.gitignore`ga kiritilg
 - **Almashtirilishi oson** — Supabase o'rniga boshqa backend kerak bo'lsa, faqat `data/` qatlami o'zgaradi, `domain`/`presentation` tegilmaydi.
 - **Katta jamoa uchun mos** — feature-first tuzilma bir nechta dasturchi parallel, bir-biriga xalaqit bermay ishlashiga imkon beradi.
 
+### Vendor Mustaqilligi — Majburiy Qoida (ADR-006)
+
+`docs/adr/ADR-006-hybrid-infrastructure-strategy.md`da qabul qilingan qarorga muvofiq, quyidagi qoida **majburiy** va kod review'da tekshiriladi:
+
+- `lib/features/<nom>/domain/` va `lib/features/<nom>/presentation/` ostidagi hech qanday fayl backend-maxsus paketni (`package:supabase_flutter` va h.k.) to'g'ridan-to'g'ri import qilmaydi. Bunday import faqat `lib/features/<nom>/data/datasources/` va `lib/services/supabase/` ichida ruxsat etiladi.
+- Bu — nazariy qoida emas: loyihaning barcha mavjud feature'lari (`appeals`, `disputes`, `attachments`, `ai_analyses`, `legal_reference`) shu qoidaga allaqachon amal qiladi (tekshirildi, 2026-07-28).
+- **Sabab:** `docs/adr/ADR-001-data-residency.md`dagi ochiq huquqiy savol (Supabase O'zbekiston shaxsiy ma'lumotlar qonuniga muvofiqmi) hali hal qilinmagan. Bu qoida ADR-001 qanday hal bo'lishidan qat'i nazar — backend almashtirish (yoki sezgir ma'lumotni alohida infratuzilmaga ko'chirish) kerak bo'lganda **faqat `data/` qatlami o'zgarishini** ta'minlaydi.
+- **Sezgir ma'lumot toifalari** (ADR-006'da to'liq ro'yxat): pasport, PINFL/JShShIR (hali sxemada yo'q, lekin kelajakda qo'shilsa shu qoidaga muvofiq loyihalanishi shart), telefon raqami (`profiles.phone_number`), yuklangan huquqiy hujjatlar (`attachments.*` + Storage), manzil. Bu toifalar boshqa ma'lumotdan texnik jihatdan ajratilmagan (hammasi hozircha Supabase'da) — faqat repository chegarasi orqali kelajakdagi ajratishga tayyorgarlik ko'rilgan.
+
 ## Supabase Backend
 
 Supabase MVP uchun yagona backend platforma bo'lib, quyidagi xizmatlarni taqdim etadi:
