@@ -50,9 +50,11 @@ MVP'ga yetish quyidagi ketma-ket bosqichlarga bo'lingan. Har bir bosqich oldingi
 - **Bosqich 3 — Nizo (Disputes) va AI tahlili:** ikki tomonli nizo yaratish, tomonlar faktlarini taqdim etishi, AI Service integratsiyasi va tarafsiz tahlil natijasini ko'rsatish.
 - **Bosqich 4 — Offline-First va Sinxronizatsiya:** Local Storage, Sync Engine, Conflict Resolution va Network State Handling mexanizmlarining to'liq implementatsiyasi (`docs/ARCHITECTURE.md`dagi tegishli bo'limlarga muvofiq) — murojaat/nizo va fayl oqimlariga bog'lab.
 - **Bosqich 5 — Admin paneli va xabarnomalar:** admin uchun boshqaruv interfeysi (ma'lumotnomalar, holat boshqaruvi, audit jurnali ko'rish) va push xabarnoma tizimining to'liq ishga tushirilishi.
-- **Bosqich 6 — Mustahkamlash, audit va reliz tayyorgarligi:** Security/Performance/UX auditlari, aniqlangan kamchiliklarni yopish (`docs/ACTION_PLAN.md` orqali), reliz oldidan yakuniy tekshiruv (`docs/SECURITY.md`, "Security Checklist" bo'limi).
+- **Bosqich 6 — Mustahkamlash, audit va reliz tayyorgarligi:** Security/Performance/UX auditlari, aniqlangan kamchiliklarni yopish (`docs/ACTION_PLAN.md` orqali), reliz oldidan yakuniy tekshiruv (`docs/SECURITY.md`, "Security Checklist" bo'limi). **Old shart:** bu bosqich Bosqich 1, 3, 4 va 5 funksional jihatdan yakunlangandan keyingina boshlanadi — u "oxirgi jilolash" bosqichi, "keyingi ish bloki" degani emas.
 
 Bosqichlar orasidagi chegara qat'iy emas — keyingi bosqich boshlanishi joriy bosqichning audit talabidan o'tishiga bog'liq (`docs/DEVELOPMENT_RULES.md`, 23-band).
+
+> **Muhim atama aniqligi:** loyiha muhokamalarida (masalan Claude Code bilan suhbatda) "Phase 6" yoki "Bosqich 6" so'zi ba'zan norasmiy ma'noda — "keyingi ish bloki" degan ma'noda — ishlatilishi mumkin. Bu hujjatdagi **Bosqich 6** esa qat'iy, tor ma'noga ega: yuqoridagi olti bosqichning oxirgisi, Bosqich 1/3/4/5 funksional yakunlangandan keyingina boshlanadigan reliz-tayyorgarlik bosqichi. Har qanday norasmiy "Phase 6" murojaati ushbu rasmiy Bosqich 6 bilan avtomatik tenglashtirilmasligi kerak — agar Bosqich 1/3/4/5 hali yakunlanmagan bo'lsa, "Phase 6"ni boshlash so'ralganda, bu chalkashlikni aniqlashtirish talab qilinadi.
 
 ## Phase 1 Goals
 
@@ -75,6 +77,25 @@ Bosqich 1 maqsadi — ilovaning "hech narsa ishlamaydi" holatidan "foydalanuvchi
 - `core/error/`dagi `Failure` sealed union implementatsiyasi va kamida autentifikatsiya feature'i orqali sinovdan o'tgan `Exception → Failure` zanjiri.
 - Tuzatilgan `dio_client.dart` — `LogInterceptor` faqat `kDebugMode`da faol.
 - Yangilangan `docs/SETUP.md` (agar Supabase loyihasini sozlash bo'yicha yangi amaliy qadamlar paydo bo'lsa) va yangilangan `PROJECT_AUDIT.md` qayta baholovi — Bosqich 1 yakunida "Xavfsizlik" va "Kengaytirish imkoniyati" bo'limlaridagi tegishli topilmalarning yopilganini ko'rsatuvchi.
+
+## Joriy amalga oshirish holati (2026-07-28 holatiga)
+
+Bu bo'lim yuqoridagi rejalashtirilgan bosqich ketma-ketligi bilan **haqiqiy** qurilish tartibi o'rtasidagi farqni hujjatlashtiradi (`docs/DEVELOPMENT_RULES.md`, "Hujjat-kod muvofiqligi" talabi). Bu farq atayin emas — u loyihaning haqiqiy rivojlanish tartibi natijasida yuzaga keldi va Bosqich 6'dan oldin yopilishi kerak bo'lgan bilinga ma'lum bo'shliq sifatida qayd etiladi.
+
+**Qurilgan (rejalashtirilgan tartibdan farqli ketma-ketlikda):**
+
+- Bosqich 1'ning **backend qismi**: haqiqiy Supabase sxemasi, RLS siyosatlari (endi `is_admin()`/`owns_appeal()`/`is_dispute_party()`/`can_access_case()` orqali markazlashtirilgan — `docs/DATABASE.md`, "Umumiy konventsiyalar" bo'limi), Storage foundation va `profiles`ni avtomatik yaratuvchi autentifikatsiya trigger'i — to'liq bajarilgan va commit qilingan.
+- Bosqich 2 (Appeals) va Bosqich 3 (Disputes)ning **Flutter UI qismi** — murojaat/nizo yaratish, tahrirlash, yuborish, fayl biriktirish va AI tahlil natijasini ko'rish ekranlari — Clean Architecture uch qatlami (`data`/`domain`/`presentation`) bilan qurilgan, lekin Bosqich 1'ning Flutter UI qismidan (pastda) **oldin**.
+
+**Qurilmagan — Bosqich 1'ning Flutter UI qismi (bilinga bo'shliq):**
+
+- Ro'yxatdan o'tish, SMS tasdiqlash, kirish, parolni tiklash ekranlari qurilmagan.
+- Splash/App Entry Flow (mavjud sessiyani aniqlash) va GoRouter darajasidagi auth guard qurilmagan.
+- Rolga asoslangan navigatsiya skeleti (Fuqaro/Tashkilot/Admin uchun asosiy ekranlar) qurilmagan.
+- **Amaliy natija:** hozirgi holatda foydalanuvchi ilovaga kira olmaydi — qurilgan `appeals`/`disputes` ekranlariga hech qanday auth'dan o'tgan holda yetib bo'lmaydi (kirish nuqtasi yo'q). Bu topilma "Pre-Phase 6 Hardening Sprint" doirasida **ataylab tuzatilmadi**, chunki bu yangi funksiya qo'shishni talab qiladi (sprint ko'lami faqat mavjud poydevorni mustahkamlash bilan cheklangan) — Bosqich 6 boshlanishidan oldin yopilishi shart bo'lgan bilinga qoldirilgan ish sifatida shu yerda qayd etiladi.
+- Offline-First (Bosqich 4) qurilmagan — bu rejalashtirilgan tartibga mos, muddatidan oldin emas.
+
+**Xulosa:** MVP Scope va Release Criteria'dagi talablar o'zgarmagan; faqat qurilish TARTIBI rejalashtirilganidan farq qildi. Keyingi ish — avval Bosqich 1'ning qolgan Flutter UI qismini (yuqoridagi bo'shliqlar) yopish, so'ngra Bosqich 3'ning AI Service qismini, Bosqich 4'ni va Bosqich 5'ni yakunlash, va faqat shundan keyin rasmiy Bosqich 6 (yuqoridagi "Development Phases" bo'limidagi old shartga muvofiq) boshlanadi. Joriy sanada ("2026-07-28 holatiga") loyiha hali Bosqich 6'ni boshlash uchun tayyor emas.
 
 ## Phase 2
 
