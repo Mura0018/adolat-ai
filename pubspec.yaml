@@ -30,6 +30,9 @@ dependencies:
   # Secure storage
   flutter_secure_storage: ^9.2.2
 
+  # Fayl tanlash (dalil/hujjat biriktirish uchun)
+  file_picker: ^8.1.2
+
   # Immutable models / value classes
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0

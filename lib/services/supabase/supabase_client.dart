@@ -11,7 +11,7 @@ abstract final class SupabaseService {
   static Future<void> initialize() {
     return Supabase.initialize(
       url: EnvConfig.supabaseUrl,
-      anonKey: EnvConfig.supabaseAnonKey,
+      publishableKey: EnvConfig.supabaseAnonKey,
     );
   }
 
