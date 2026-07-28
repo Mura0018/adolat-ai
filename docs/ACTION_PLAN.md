@@ -127,8 +127,8 @@ Quyidagi jadvallar loyiha tarixida hozirgacha o'tkazilgan barcha audit va tekshi
 | "Phase 6" atamasi ROADMAP.md'dagi rasmiy Bosqich 6 bilan chalkashtirilishi mumkin edi | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | ROADMAP.md'ga aniq old shart va atama farqlash izohi qo'shildi. |
 | ADR-001/ADR-002 hali "Taklif qilingan" holatida, Phase 6 gate qondirilmagan edi | Critical | Done | Loyiha egasi | 2026-07-28 | 2026-07-28 | ADR-002 Qabul qilingan deb belgilandi; ADR-001 Bloklangan (tashqi huquqiy javob kutilmoqda) deb aniq belgilandi. |
 | Katta hajmdagi tekshirilgan/audit qilingan ish hech qachon commit qilinmagan edi | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | 5 ta mantiqiy commit orqali (568271b, b4f3024, 43319b5, 542f9cf, 1d0cba5) barchasi commit va push qilindi. |
-| `docs/ACTION_PLAN.md` hech qachon haqiqiy topilma olmagan edi | High | In Progress | Claude Code | 2026-07-28 | — | Ushbu bo'lim shu topilmani yopish uchun yozilmoqda (blocker #4). |
-| `lib/features/README.md` eskirgan ("bo'sh" deb yozilgan, 5 ta feature mavjud) | High | Open | Tayinlanmagan | 2026-07-28 | — | Blocker #5 sifatida navbatda. |
+| `docs/ACTION_PLAN.md` hech qachon haqiqiy topilma olmagan edi | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Ushbu bo'lim (8 ta audit manbai, barcha topilmalar) yozildi va commit qilindi (`02516df`). |
+| `lib/features/README.md` eskirgan ("bo'sh" deb yozilgan, 5 ta feature mavjud) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Haqiqiy 5 ta feature ro'yxati bilan yangilandi va commit qilindi (`02516df`). |
 | ADR-001'da sonli xatolar bor edi (4 ta migratsiya o'rniga 5 ta; 2 ta migratsiya o'rniga 3 ta, 26 siyosat o'rniga 38) | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan, navbatdagi blocker sifatida kutilmoqda. |
 | ROADMAP.md ADR jarayoniga umuman ishora qilmaydi | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan. |
 | `android`/`ios`/`web` commit qilinishi kerakmi degan qoida SETUP.md va .gitignore o'rtasida hal qilinmagan | High | Open | Loyiha egasi | 2026-07-28 | — | Loyiha egasining qarorini talab qiladi. |
