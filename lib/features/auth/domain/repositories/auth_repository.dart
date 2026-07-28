@@ -12,15 +12,20 @@ import '../entities/app_user.dart';
 /// (hozircha Supabase Auth) ishlatilishini butunlay yashiradi.
 abstract interface class AuthRepository {
   /// Fuqaro sifatida ro'yxatdan o'tkazadi (docs/UI.md: "Fuqaro ro'yxatdan
-  /// o'tish shakli"). `phoneNumber`/`email`dan **kamida bittasi** talab
-  /// qilinadi — bu invariant chaqiruvchi tomonda (presentation/use case)
-  /// tekshiriladi, chunki Dart tur tizimi buni interfeys darajasida
-  /// ifodalay olmaydi.
+  /// o'tish shakli"). `phoneNumber`/`email`dan **aynan bittasi** talab
+  /// qilinadi (ikkalasi ham emas, birontasi ham bo'lmasa ham emas) — bu
+  /// Supabase Auth'ning o'zi qo'yadigan cheklov (`GoTrueClient.signUp`),
+  /// chaqiruvchi tomonda (presentation/use case) tekshiriladi.
   ///
-  /// Agar `phoneNumber` berilgan bo'lsa, hisob faollashishi uchun
-  /// [verifyPhoneOtp] chaqirilishi shart (docs/SECURITY.md: "Telefon
+  /// **Nega `Result<void>`, `Result<AppUser>` emas:** telefon orqali
+  /// ro'yxatdan o'tishda Supabase hech qanday sessiya bermaydi (SMS
+  /// tasdiqlanmaguncha) — shu paytda `profiles`ni o'qishga urinish RLS
+  /// tomonidan rad etiladi, chunki `auth.uid()` hali `null`. Haqiqiy
+  /// `AppUser` faqat [verifyPhoneOtp] muvaffaqiyatli tugagandan keyin
+  /// mavjud bo'ladi. Agar `phoneNumber` berilgan bo'lsa, chaqiruvchi
+  /// tomon [verifyPhoneOtp]ga o'tishi shart (docs/SECURITY.md: "Telefon
   /// orqali ro'yxatdan o'tishda SMS-kod bilan tasdiqlash talab qilinadi").
-  Future<Result<AppUser>> registerCitizen({
+  Future<Result<void>> registerCitizen({
     required String password,
     required String fullName,
     String? phoneNumber,
@@ -30,7 +35,8 @@ abstract interface class AuthRepository {
   /// Tashkilot sifatida ro'yxatdan o'tkazadi (docs/UI.md: "Tashkilot
   /// ro'yxatdan o'tish shakli"; docs/DATABASE.md, 2-jadval). Fuqaro
   /// maydonlariga qo'shimcha ravishda yuridik ma'lumotlarni talab qiladi.
-  Future<Result<AppUser>> registerOrganization({
+  /// `Result<void>` sababi [registerCitizen]dagi bilan bir xil.
+  Future<Result<void>> registerOrganization({
     required String password,
     required String fullName,
     required String legalName,
@@ -42,8 +48,10 @@ abstract interface class AuthRepository {
   });
 
   /// Telefon raqamini SMS kodi bilan tasdiqlaydi (docs/UI.md: "Telefon
-  /// tasdiqlash (SMS) ekrani").
-  Future<Result<void>> verifyPhoneOtp({
+  /// tasdiqlash (SMS) ekrani") — muvaffaqiyatli bo'lsa sessiya
+  /// o'rnatiladi, shuning uchun to'liq `AppUser` qaytariladi (registratsiya
+  /// oqimida bu sessiya birinchi marta shu yerda paydo bo'ladi).
+  Future<Result<AppUser>> verifyPhoneOtp({
     required String phoneNumber,
     required String otpCode,
   });

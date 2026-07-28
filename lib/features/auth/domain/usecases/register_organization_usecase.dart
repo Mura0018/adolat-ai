@@ -1,15 +1,15 @@
 import '../../../../core/network/result.dart';
-import '../entities/app_user.dart';
 import '../repositories/auth_repository.dart';
 
 /// Tashkilot sifatida ro'yxatdan o'tkazadi (docs/UI.md, "Authentication
-/// Screens" — "Tashkilot ro'yxatdan o'tish shakli").
+/// Screens" — "Tashkilot ro'yxatdan o'tish shakli"). `Result<void>`
+/// sababi: `AuthRepository.registerCitizen`ga qarang.
 class RegisterOrganizationUseCase {
   const RegisterOrganizationUseCase(this._repository);
 
   final AuthRepository _repository;
 
-  Future<Result<AppUser>> call({
+  Future<Result<void>> call({
     required String password,
     required String fullName,
     required String legalName,
