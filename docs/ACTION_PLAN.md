@@ -1,6 +1,6 @@
 # ACTION_PLAN.md — Adolat AI audit topilmalari harakat rejasi
 
-Bu hujjat **faqat qayta ishlatiladigan shablon (template) hujjati** — hozircha aniq loyiha topilmasi yozilmagan, faqat tuzilma va qoidalar belgilangan.
+Bu hujjat qayta ishlatiladigan shablon (pastdagi "Empty template for future actions" bo'limi) VA loyihaning haqiqiy audit topilmalari jurnalini ("Qayd etilgan topilmalar" bo'limi) birgalikda saqlaydi.
 
 ## Purpose
 
@@ -42,6 +42,100 @@ Bu hujjat **faqat qayta ishlatiladigan shablon (template) hujjati** — hozircha
 - Har bir yozuv qaysi Sprint yoki `docs/ROADMAP.md`dagi Bosqich/Phase doirasida hal qilinishi rejalashtirilganini ko'rsatadi (masalan "Bosqich 1", "Bosqich 2").
 - Critical darajadagi topilmalar uchun Target Sprint/Phase har doim **joriy** Sprint/Bosqich bo'lishi kerak — keyingi bosqichga surib qo'yilmaydi.
 - Agar Target Sprint/Phase o'zgarsa (masalan kechiktirilsa), bu o'zgarish va uning sababi Izohlar qismida qayd etiladi.
+
+## Qayd etilgan topilmalar (Recorded Findings)
+
+Quyidagi jadvallar loyiha tarixida hozirgacha o'tkazilgan barcha audit va tekshiruvlarning topilmalarini qayd etadi (`DEVELOPMENT_RULES.md`, 22 va 25-bandlar bo'yicha talab qilingan, lekin shu paytgacha bu hujjatga yozilmagan holda qolgan — ushbu bo'lim shu bo'shliqni orqaga qarab (retroactively) yopadi). Katta hajm sababli, har bir topilma yuqoridagi to'liq shablon o'rniga qisqartirilgan jadval qatori sifatida yozilgan — barcha talab qilingan maydonlar (topilma, joy, ustuvorlik, holat, owner, sana, yechim) baribir mavjud. Yangi, alohida topilma qo'shishda yuqoridagi to'liq shablondan foydalanish davom etadi.
+
+### 1. Schema Foundation migratsiyasi auditi — 2026-07-26
+
+**Manba:** Senior-architect review, `supabase/migrations/20260726000001_initial_schema_foundation.sql`
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| RLS ba'zi jadvallarda yoqilmagan edi | Critical | Done | Claude Code | 2026-07-26 | 2026-07-26 | Barcha 13 jadvalda `enable row level security` qo'shildi, shu migratsiya ichida. |
+| FK ustunlarida indeks yo'q edi (`category_id`, `recipient_body_id` va h.k.) | High | Done | Claude Code | 2026-07-26 | 2026-07-26 | 6 ta indeks qo'shildi (appeals/disputes/case_status_history/notifications). |
+| Ba'zi FK'larda `ON DELETE` xatti-harakati aniq belgilanmagan edi | High | Done | Claude Code | 2026-07-26 | 2026-07-26 | `case_status_history`/`ai_analyses`/`attachments`/`notifications`ning `appeal_id`/`dispute_id` FK'lariga `on delete cascade` qo'shildi. |
+
+### 2. RLS Policies migratsiyasi xavfsizlik auditi — 2026-07-26
+
+**Manba:** Senior security audit, `supabase/migrations/20260726000002_rls_policies.sql`
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| `disputes_update_respondent` siyosati respondentga `status` ustunini o'zgartirishga yo'l qo'yib qo'yardi | High | Done | Claude Code | 2026-07-26 | 2026-07-26 | Siyosat qayta yozildi — respondent faqat `respondent_statement`ni o'zgartira oladi, "unchanged column" guard qo'shildi. Qayta audit orqali tasdiqlandi. |
+
+### 3. Storage Foundation migratsiyasi xavfsizlik auditi — 2026-07-27
+
+**Manba:** Senior security audit, `supabase/migrations/20260726000003_storage_foundation.sql`
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| Storage yo'lidagi UUID segmentini `::uuid`ga cast qilishdan oldin format tekshirilmagan edi (xato holatida noaniq xatolik xavfi) | High | Done | Claude Code | 2026-07-27 | 2026-07-27 | UUID regex guard (`^[0-9a-fA-F]{8}-...$`) cast'dan oldin qo'shildi, barcha 3 storage siyosatida. |
+
+### 4. Authentication Foundation migratsiyasi xavfsizlik auditi — 2026-07-27
+
+**Manba:** Senior security audit, `supabase/migrations/20260727000001_authentication_foundation.sql`
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| `handle_new_user()` funksiyasida aniq `search_path` xavfsizlik sozlamasi so'ralgan edi | — | Done | Claude Code | 2026-07-27 | 2026-07-27 | Tekshiruvda funksiya allaqachon `set search_path = ''` bilan to'g'ri yozilgani aniqlandi — o'zgarish kiritilmadi (kosmetik/keraksiz tahrirdan qochildi). |
+
+### 5. Case Management Foundation audit + Pre-Phase 6 Hardening Sprint — 2026-07-28
+
+**Manba:** Full Critical/High/Medium/Low audit (Flutter kod, RLS), so'ngra maxsus mustahkamlash sprinti
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| `appeals_update` RLS siyosati muallifga o'z murojaatini `draft` -> `submitted`ga o'tkazishga yo'l qo'ymas edi (ARCHITECTURE.md'dagi hujjatlashtirilgan niyatga zid) | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | Xavfsizlik ta'siri tahlili yozildi, siyosat tuzatildi (keyinchalik authorization-hardening migratsiyasiga birlashtirildi, commit `568271b`). |
+| Xom exception/failure matni foydalanuvchiga to'g'ridan-to'g'ri ko'rsatilardi (6 ta ekranda, 12 ta joyda) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Barcha joylar `describeErrorForUser()`/`.userMessage` orqali xavfsiz Uzbek xabarlarga almashtirildi. |
+| Egalik/avtorizatsiya tekshiruvi 26+ joyda inline subquery sifatida takrorlangan edi (yagona haqiqat manbai yo'q) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | `is_admin()`/`owns_appeal()`/`is_dispute_party()`/`can_access_case()` funksiyalari yaratildi, commit `568271b`. |
+| Hujjatlar (DATABASE.md, ROADMAP.md) haqiqiy qurilgan kod bilan sinxron emas edi | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Ikkala hujjat yangilandi, commit `b4f3024`. |
+| Flutter kodi hech qachon haqiqiy kompilyator bilan tekshirilmagan edi (faqat qo'lda statik tahlil) | High | Done | Claude Code | 2026-07-28 | 2026-07-28 | Flutter 3.44.8 o'rnatildi, `flutter analyze` ishga tushirildi: 67 topilma (7 ta haqiqiy xato) -> 0 xato, 4 ta ataylab qoldirilgan info-darajadagi topilma. |
+
+### 6. Enterprise Architecture Audit (Pre-Phase 6) — 2026-07-28
+
+**Manba:** To'liq loyiha auditi (migratsiyalar, RLS, Flutter arxitektura, hujjatlar)
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| (Critical darajadagi topilma aniqlanmadi) | — | Done | Claude Code | 2026-07-28 | 2026-07-28 | Audit yakunlandi, kod o'zgartirilmadi (talab qilinmagan). Natijalar keyingi Zero-Regret Audit uchun kirish ma'lumoti bo'ldi. |
+
+### 7. Zero-Regret Audit — 2026-07-28
+
+**Manba:** 1 million foydalanuvchi miqyosidagi arxitektura auditi (feature so'rovlari e'tiborga olinmagan)
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Maqsadli Bosqich | Izoh |
+|---|---|---|---|---|---|---|
+| Data Residency — O'zbekiston shaxsiy ma'lumotlari qonuni vs Supabase hosting | Critical | Open | Loyiha egasi | 2026-07-28 | Bosqich 6'dan oldin | ADR-001 orqali kuzatiladi — Bloklangan, tashqi huquqiy tasdiqlash kutilmoqda. |
+| O'zgarmas audit jurnali vs ma'lumotni o'chirish so'rovlari | Critical | In Progress | Loyiha egasi | 2026-07-28 | Hisobni o'chirish feature'i | ADR-002 orqali kuzatiladi — dizayn Qabul qilingan (2026-07-28), amalga oshirish hali kutilmoqda. |
+| `laws` jadvalida versiyalash yo'q — AI iqtiboslari vaqt o'tishi bilan asossiz bo'lib qoladi | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 3 (AI Service)dan oldin | ADR-003 orqali kuzatiladi — Taklif qilingan, hali qaror qabul qilinmagan. |
+| AI so'rovlari uchun xarajat/suiiste'mol nazorati yo'q | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 3 (AI Service)dan oldin | ADR-004 orqali kuzatiladi — Taklif qilingan. |
+| AI vendor uzilishi/fallback strategiyasi yo'q | High/Medium | Open | Tayinlanmagan | 2026-07-28 | Bosqich 3 (AI Service)dan oldin | ADR-005 orqali kuzatiladi — Taklif qilingan. |
+| Offline-First talab va Phase 2/3'da qurilgan repository shartnomalari o'rtasidagi moslik aniq emas | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 4'dan oldin | ADR hali yozilmagan (`docs/adr/README.md`da ADR-006 sifatida rejalashtirilgan). |
+| Ro'yxat (list) endpointlarida pagination yo'q (`listMine()` va h.k.) | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6'dan oldin | ADR hali yozilmagan. |
+| Yassi 3 rolli model (`citizen`/`organization`/`admin`) operatsion miqyoslanish chegarasi | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 5 (Admin paneli) | ADR hali yozilmagan. |
+| Avtomatlashtirilgan test va CI yo'q | High | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6'dan oldin | ADR hali yozilmagan. |
+| Fayl yuklashda magic-byte tekshiruvi yo'q, virus skanerlash yo'q, backup RPO/RTO belgilanmagan, AI vendor hosting hal qilinmagan, yagona til (o'zbek), bitta Supabase mintaqasi, push vendor tanlanmagan | Medium/Low | Open | Tayinlanmagan | 2026-07-28 | Bosqich 6 doirasida | To'liq tavsif Zero-Regret Audit hisobotida (ushbu suhbat tarixida); alohida ADR talab qilinmaydi, Bosqich 6 rejalashtirishda ko'rib chiqiladi. |
+
+### 8. Final Project Readiness Review — 2026-07-28 (davom etmoqda)
+
+**Manba:** Phase 6'dan oldingi yakuniy loyiha tayyorligi auditi
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| "Phase 6" atamasi ROADMAP.md'dagi rasmiy Bosqich 6 bilan chalkashtirilishi mumkin edi | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | ROADMAP.md'ga aniq old shart va atama farqlash izohi qo'shildi. |
+| ADR-001/ADR-002 hali "Taklif qilingan" holatida, Phase 6 gate qondirilmagan edi | Critical | Done | Loyiha egasi | 2026-07-28 | 2026-07-28 | ADR-002 Qabul qilingan deb belgilandi; ADR-001 Bloklangan (tashqi huquqiy javob kutilmoqda) deb aniq belgilandi. |
+| Katta hajmdagi tekshirilgan/audit qilingan ish hech qachon commit qilinmagan edi | Critical | Done | Claude Code | 2026-07-28 | 2026-07-28 | 5 ta mantiqiy commit orqali (568271b, b4f3024, 43319b5, 542f9cf, 1d0cba5) barchasi commit va push qilindi. |
+| `docs/ACTION_PLAN.md` hech qachon haqiqiy topilma olmagan edi | High | In Progress | Claude Code | 2026-07-28 | — | Ushbu bo'lim shu topilmani yopish uchun yozilmoqda (blocker #4). |
+| `lib/features/README.md` eskirgan ("bo'sh" deb yozilgan, 5 ta feature mavjud) | High | Open | Tayinlanmagan | 2026-07-28 | — | Blocker #5 sifatida navbatda. |
+| ADR-001'da sonli xatolar bor edi (4 ta migratsiya o'rniga 5 ta; 2 ta migratsiya o'rniga 3 ta, 26 siyosat o'rniga 38) | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan, navbatdagi blocker sifatida kutilmoqda. |
+| ROADMAP.md ADR jarayoniga umuman ishora qilmaydi | High | Open | Tayinlanmagan | 2026-07-28 | — | Hali tuzatilmagan. |
+| `android`/`ios`/`web` commit qilinishi kerakmi degan qoida SETUP.md va .gitignore o'rtasida hal qilinmagan | High | Open | Loyiha egasi | 2026-07-28 | — | Loyiha egasining qarorini talab qiladi. |
+| Avtomatlashtirilgan test va CI yo'q (Zero-Regret Audit bilan bir xil topilma) | High | Open | Tayinlanmagan | 2026-07-28 | — | Yuqoridagi 7-bo'limdagi bir xil yozuvga qarang, ikki marta hisoblanmaydi. |
+| `pubspec.lock` avval kuzatilmagan edi | Medium | Done | Claude Code | 2026-07-28 | 2026-07-28 | Blocker #3 doirasida commit qilindi (`1d0cba5`). |
+| 12 ta eski RLS siyosati hali yangi funksiyalarga o'tkazilmagan | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Xatti-harakat to'g'ri, faqat izchillik masalasi; shoshilinch emas. |
+| Bog'liqliklar versiyasi eskirgan (36 ta paket) | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Oddiy texnik xizmat, shoshilinch emas. |
 
 ## Empty template for future actions
 
