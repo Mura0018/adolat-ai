@@ -1,7 +1,9 @@
+import 'ai_conversation_status.dart';
 import 'ai_message.dart';
 
-/// Bitta AI suhbat sessiyasi — xabarlar tarixi va identifikatori
-/// (Module 4 talabi: "AI Session — Conversation ID, Message history").
+/// Bitta AI suhbat sessiyasi — xabarlar tarixi, identifikatori va
+/// hayot davri holati (Module 4 talabi: "AI Session — Conversation ID,
+/// Message history"; Phase 2A talabi: "Conversation lifecycle").
 ///
 /// **Muhim:** bu klass shaxsan qaysi `appeal`/`dispute`ga tegishli
 /// ekanligini bilmaydi — bu bog'lanish `CaseContext` (`domain/prompt/
@@ -15,22 +17,53 @@ class AIConversation {
     required this.messages,
     required this.createdAt,
     required this.updatedAt,
+    this.status = AIConversationStatus.active,
   });
 
   final String id;
   final List<AIMessage> messages;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final AIConversationStatus status;
+
+  bool get isClosed => status == AIConversationStatus.closed;
 
   /// Yangi xabar bilan **yangi** nusxa qaytaradi — `AIConversation`
-  /// o'zgarmas (immutable), sessiya holatini `AISessionManager`
-  /// boshqaradi (`data/session/ai_session_manager.dart`).
+  /// o'zgarmas (immutable), sessiya holatini `ConversationRepository`
+  /// boshqaradi (`domain/repositories/conversation_repository.dart`).
+  ///
+  /// **Lifecycle qoidasi:** yopilgan suhbatga xabar qo'shib bo'lmaydi —
+  /// bu chaqiruvchi kodning xatosi (dasturlash xatosi), foydalanuvchi
+  /// kiritgan noto'g'ri ma'lumot emas, shuning uchun `StateError`
+  /// tashlanadi (`Failure`/`Result<T>` konventsiyasi emas — bu
+  /// zanjirning yuqorisida, `docs/AI_ARCHITECTURE.md`dagi "Request
+  /// Flow"da hal qilinishi kutiladi).
   AIConversation appendMessage(AIMessage message) {
+    if (isClosed) {
+      throw StateError(
+        'Yopilgan suhbatga xabar qo\'shib bo\'lmaydi: $id',
+      );
+    }
     return AIConversation(
       id: id,
       messages: [...messages, message],
       createdAt: createdAt,
       updatedAt: message.createdAt,
+      status: status,
+    );
+  }
+
+  /// Suhbatni yopadi — shundan keyin [appendMessage] `StateError`
+  /// tashlaydi. Allaqachon yopilgan suhbatni qayta yopish xavfsiz
+  /// (idempotent), yangi nusxa qaytaradi lekin holat o'zgarmaydi.
+  AIConversation close({required DateTime closedAt}) {
+    if (isClosed) return this;
+    return AIConversation(
+      id: id,
+      messages: messages,
+      createdAt: createdAt,
+      updatedAt: closedAt,
+      status: AIConversationStatus.closed,
     );
   }
 
@@ -41,6 +74,7 @@ class AIConversation {
     if (other.id != id ||
         other.createdAt != createdAt ||
         other.updatedAt != updatedAt ||
+        other.status != status ||
         other.messages.length != messages.length) {
       return false;
     }
@@ -51,10 +85,15 @@ class AIConversation {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, createdAt, updatedAt, Object.hashAll(messages));
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    status,
+    Object.hashAll(messages),
+  );
 
   @override
   String toString() =>
-      'AIConversation(id: $id, messages: ${messages.length}, updatedAt: $updatedAt)';
+      'AIConversation(id: $id, status: $status, messages: ${messages.length}, updatedAt: $updatedAt)';
 }

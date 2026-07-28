@@ -4,7 +4,8 @@ import '../data/providers/gemini_provider_adapter.dart';
 import '../data/providers/local_llm_provider_adapter.dart';
 import '../data/providers/openai_provider_adapter.dart';
 import '../data/repositories/ai_repository_impl.dart';
-import '../data/session/ai_session_manager.dart';
+import '../data/session/in_memory_cancellation_registry.dart';
+import '../data/session/in_memory_conversation_repository.dart';
 import '../domain/entities/ai_provider_id.dart';
 import '../domain/repositories/ai_repository.dart';
 import '../presentation/ai_service_handler.dart';
@@ -49,7 +50,8 @@ class AIServiceLocator {
 
     return AIServiceHandler(
       repository: repository,
-      sessionManager: AISessionManager(),
+      conversationRepository: InMemoryConversationRepository(),
+      cancellationRegistry: InMemoryCancellationRegistry(),
     );
   }
 }

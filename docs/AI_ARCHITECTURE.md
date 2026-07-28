@@ -1,6 +1,8 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–2A)
 
 Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.**
+
+**Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
 ## Nega `lib/`dan tashqarida
 
@@ -22,12 +24,15 @@ flowchart TB
         end
         subgraph Domain["domain/ — sof Dart"]
             Repo["AIRepository\n(abstrakt)"]
+            ConvRepo["ConversationRepository\n(abstrakt)"]
+            CancelReg["AICancellationRegistry\n(abstrakt)"]
             Prompt["PromptPipeline\n+ 5 ta PromptContext"]
             Entities["AIRequest / AIResponse /\nAIConversation / AIMessage /\nAIContext / AIStreamEvent"]
         end
         subgraph Data["data/"]
             RepoImpl["AIRepositoryImpl"]
-            Session["AISessionManager"]
+            ConvRepoImpl["InMemoryConversationRepository"]
+            CancelRegImpl["InMemoryCancellationRegistry"]
             subgraph Providers["providers/"]
                 OpenAI["OpenAiProviderAdapter"]
                 Gemini["GeminiProviderAdapter"]
@@ -49,9 +54,12 @@ flowchart TB
     DB[("Supabase\npublic.ai_analyses\n(faqat service role yozadi)")]
 
     Handler --> Repo
+    Handler --> ConvRepo
+    Handler --> CancelReg
     Repo -.implements.-> RepoImpl
+    ConvRepo -.implements.-> ConvRepoImpl
+    CancelReg -.implements.-> CancelRegImpl
     RepoImpl --> Safety
-    RepoImpl --> Session
     RepoImpl --> Providers
     OpenAI -.kelgusida.-> OpenAIAPI
     Gemini -.kelgusida.-> GeminiAPI
@@ -68,13 +76,14 @@ flowchart TB
 
 ## Request Flow
 
-1. **Kirish nuqtasi** — `AIServiceHandler.handleRequest()` chaqiriladi (kelgusida: Edge Function HTTP so'rovi orqali). Suhbat (`AIConversation`) mavjudligi `AISessionManager`dan tekshiriladi.
-2. **Bekor qilish tokeni** — shu so'rov uchun `AICancellationToken` yaratiladi va ro'yxatga olinadi (`AISessionManager.beginCancellableOperation`).
-3. **Domain chaqiruvi** — `AIRepository.sendMessage()` chaqiriladi, `AIContext` (allaqachon `PromptPipeline.compose()` orqali tayyorlangan) va `providerId` bilan.
-4. **Xavfsizlik tekshiruvi (joy ajratilgan)** — `AIRepositoryImpl` avval `AISafetyService.validateRequest()`ni chaqiradi. Hozircha implementatsiya yo'q — bu qadam **arxitektura darajasida** to'g'ri joyga qo'yilgan, shunda haqiqiy tekshiruv qo'shilganda boshqa hech narsa o'zgarmaydi.
-5. **Provayderga uzatish** — `_providers[providerId]` xaritasidan mos `AIProviderAdapter` tanlanadi va `streamCompletion()` chaqiriladi.
-6. **Oqim (stream)** — natija `Stream<AIStreamEvent>` sifatida qaytadi (`chunk`/`done`/`cancelled`/`error`), `AIServiceHandler` orqali chaqiruvchiga uzatiladi.
-7. **Yakunlanish** — `done`/`error` hodisasida `AISessionManager.endOperation()` chaqirilib, bekor qilish tokeni tozalanadi.
+1. **Kirish nuqtasi** — `AIServiceHandler.handleRequest()` chaqiriladi (kelgusida: Edge Function HTTP so'rovi orqali).
+2. **Foydalanuvchi xabari darhol tarixga yoziladi** — `ConversationRepository.appendMessage()` orqali, `role: user` bilan, so'rov muvaffaqiyatli bo'lishidan **qat'i nazar**. Suhbat topilmasa yoki allaqachon yopilgan bo'lsa (`AIConversation.isClosed`), shu yerda `AIStreamEvent.error` bilan to'xtaydi — provayderga umuman murojaat qilinmaydi.
+3. **Bekor qilish tokeni** — shu so'rov uchun `AICancellationToken` yaratiladi va ro'yxatga olinadi (`AICancellationRegistry.register()`).
+4. **Domain chaqiruvi** — `AIRepository.sendMessage()` chaqiriladi, `AIContext` (allaqachon `PromptPipeline.compose()` orqali tayyorlangan) va `providerId` bilan.
+5. **Xavfsizlik tekshiruvi (joy ajratilgan)** — `AIRepositoryImpl` avval `AISafetyService.validateRequest()`ni chaqiradi. Hozircha implementatsiya yo'q — bu qadam **arxitektura darajasida** to'g'ri joyga qo'yilgan, shunda haqiqiy tekshiruv qo'shilganda boshqa hech narsa o'zgarmaydi.
+6. **Provayderga uzatish** — `_providers[providerId]` xaritasidan mos `AIProviderAdapter` tanlanadi va `streamCompletion()` chaqiriladi.
+7. **Oqim (stream)** — natija `Stream<AIStreamEvent>` sifatida qaytadi (`chunk`/`done`/`cancelled`/`error`). `chunk` bo'laklari suhbat tarixiga **yozilmaydi** (faqat oraliq holat); `done` kelganda to'liq javob `role: assistant` bilan tarixga yoziladi; `error`/`cancelled` holatida hech narsa yozilmaydi — muvaffaqiyatsiz javob tarixni "ifloslamaydi".
+8. **Yakunlanish** — `done`/`error`/`cancelled` hodisasida `AICancellationRegistry.release()` (yoki `cancel()`) chaqirilib, bekor qilish tokeni tozalanadi.
 
 Foundation bosqichida 5-qadam (xavfsizlik) har doim "xavfsiz" deb faraz qiluvchi test-double bilan, 6-qadam esa `UnimplementedError` bilan tugaydi (`ai_service/data/providers/*_adapter.dart`) — zanjirning **shakli** to'g'ri, **mazmuni** hali yo'q.
 
@@ -88,13 +97,23 @@ Foundation bosqichida 5-qadam (xavfsizlik) har doim "xavfsiz" deb faraz qiluvchi
 
 Har bir adapter o'zining konfiguratsiya shaklini olib yuradi (`OpenAiProviderAdapter.apiKey` vs `LocalLlmProviderAdapter.endpointUrl`) — bu abstraktsiyaning turli xil provayder shakllariga (bulutli API kaliti vs. mahalliy server manzili) moslasha olishini isbotlaydi.
 
-## AI Session
+## AI Session / Conversation Repository Contracts
 
-- **Conversation ID** — `AISessionManager.startConversation()` orqali generatsiya qilinadi (sozlanadigan `idGenerator`, test'larda deterministik qilib almashtirilishi mumkin).
-- **Message history** — `AIConversation.messages` (o'zgarmas ro'yxat), `appendMessage()` har safar yangi nusxa qaytaradi.
+Phase 2A'da suhbat boshqaruvi ikkita mustaqil, bir-biridan bexabar shartnomaga bo'lingan (Single Responsibility — biri davomiy ma'lumot, ikkinchisi vaqtinchalik jarayon holati):
+
+- **`ConversationRepository`** (`domain/repositories/conversation_repository.dart`) — suhbat hayot davri: `create()`, `getById()`, `appendMessage()`, `close()`. Foundation implementatsiyasi — `InMemoryConversationRepository` (`data/session/`).
+- **`AICancellationRegistry`** (`domain/repositories/ai_cancellation_registry.dart`) — suhbat bo'yicha faol so'rovni bekor qilish: `register()`, `cancel()`, `release()`. Foundation implementatsiyasi — `InMemoryCancellationRegistry`.
+
+Ikkalasi ham xotirada (in-memory) ishlaydi — ko'p nusxali (multi-instance) joylashtirishda alohida umumiy saqlash (masalan suhbat uchun Postgres, bekor qilish uchun Redis pub/sub) kerak bo'ladi; abstrakt shartnomalar shu almashtirishga tayyor.
+
+Har bir talab qanday qondirilgani:
+
+- **Conversation ID** — `InMemoryConversationRepository.create()` orqali generatsiya qilinadi (sozlanadigan `idGenerator`, test'larda deterministik qilib almashtirilishi mumkin).
+- **Conversation lifecycle** — `AIConversationStatus` (`active`/`closed`). `close()` orqali yopiladi; yopilgan suhbatga `appendMessage()` chaqirilsa `StateError` tashlanadi — bu invariant `AIConversation`ning o'zida (entity darajasida) ta'minlangan, repository implementatsiyasidan mustaqil.
+- **Message history** — `AIConversation.messages` (o'zgarmas ro'yxat), `appendMessage()` har safar yangi nusxa qaytaradi. `AIServiceHandler` foydalanuvchi va assistant xabarlarini avtomatik yozadi (yuqoridagi "Request Flow"ga qarang) — chaqiruvchi bu haqda alohida qayg'urmaydi.
 - **Context injection** — `PromptPipeline.compose()` orqali, so'rov yuborilishidan oldin.
-- **Cancellation** — `AICancellationToken`, `AISessionManager` orqali suhbat bo'yicha kuzatiladi.
-- **Streaming-ready** — `AIRepository.sendMessage()`ning qaytish turi boshidanoq `Stream<AIStreamEvent>`, keyinroq "Future-dan Stream-ga" degan buzuvchi (breaking) o'zgarishni oldini oladi.
+- **Cancellation** — `AICancellationToken` (`domain/entities/`), `AICancellationRegistry` orqali suhbat bo'yicha kuzatiladi.
+- **Streaming-ready** — `AIRepository.sendMessage()`ning qaytish turi boshidanoq `Stream<AIStreamEvent>`, keyinroq "Future-dan Stream-ga" degan buzuvchi (breaking) o'zgarishni oldini oladi. Phase 2A'da bu oqim endi `ConversationRepository` bilan real bog'langan (`done` → tarixga yozish).
 
 ## Prompt Pipeline
 
@@ -127,7 +146,7 @@ Ikkala holatda ham `ai_service/domain/`ga hech qanday o'zgarish kerak emas — b
 
 `MemoryContext.summarizedHistory` hozircha doim bo'sh ro'yxat. Kelgusida bu maydon quyidagilar bilan to'ldirilishi mo'ljallangan:
 
-- Uzoq suhbatlar uchun avtomatik qisqartirish (summarization) xizmati — `AISessionManager`ning `AIConversation.messages`ni kuzatib, chegaradan oshganda qisqartirib `MemoryContext`ga uzatishi.
+- Uzoq suhbatlar uchun avtomatik qisqartirish (summarization) xizmati — `ConversationRepository`ning `AIConversation.messages`ni kuzatib, chegaradan oshganda qisqartirib `MemoryContext`ga uzatishi.
 - Kelajakda foydalanuvchi/ish (case) darajasidagi uzoq muddatli xotira (masalan vektor bazasi) — bu ham faqat `MemoryContext.toPromptData()`ni to'ldiradi, `PromptPipeline`ning qolgan qismiga tegmaydi.
 
 ## Bog'liq hujjatlar
