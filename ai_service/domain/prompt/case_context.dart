@@ -1,3 +1,4 @@
+import 'ai_case_type.dart';
 import 'prompt_context.dart';
 
 /// Qaysi ish (murojaat/nizo) haqida tahlil so'ralayotgani
@@ -18,16 +19,18 @@ class CaseContext implements PromptContext {
     this.categoryName,
     this.hasBothPartyStatements,
   }) : assert(
-         (appealId != null) ^ (disputeId != null),
-         'appealId yoki disputeId\'dan aynan bittasi berilishi shart',
+         (caseType == AICaseType.appeal && appealId != null && disputeId == null) ||
+             (caseType == AICaseType.dispute && disputeId != null && appealId == null),
+         'caseType == appeal bo\'lsa faqat appealId, dispute bo\'lsa faqat '
+         'disputeId berilishi shart',
        );
 
-  final String caseType;
+  final AICaseType caseType;
   final String? appealId;
   final String? disputeId;
   final String? categoryName;
 
-  /// Faqat `caseType == 'dispute'` uchun ma'noli.
+  /// Faqat `caseType == AICaseType.dispute` uchun ma'noli.
   final bool? hasBothPartyStatements;
 
   @override
@@ -36,7 +39,7 @@ class CaseContext implements PromptContext {
   @override
   Map<String, dynamic> toPromptData() {
     return {
-      'case_type': caseType,
+      'case_type': caseType.name,
       if (appealId != null) 'appeal_id': appealId,
       if (disputeId != null) 'dispute_id': disputeId,
       if (categoryName != null) 'category_name': categoryName,

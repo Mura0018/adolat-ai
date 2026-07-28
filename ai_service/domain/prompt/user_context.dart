@@ -1,3 +1,4 @@
+import 'ai_user_role.dart';
 import 'prompt_context.dart';
 
 /// So'rov yuborayotgan foydalanuvchi haqida AI'ga zarur bo'lgan **minimal**
@@ -11,7 +12,7 @@ import 'prompt_context.dart';
 class UserContext implements PromptContext {
   const UserContext({required this.role, required this.preferredLanguage});
 
-  final String role;
+  final AIUserRole role;
   final String preferredLanguage;
 
   @override
@@ -19,6 +20,6 @@ class UserContext implements PromptContext {
 
   @override
   Map<String, dynamic> toPromptData() {
-    return {'role': role, 'preferred_language': preferredLanguage};
+    return {'role': role.name, 'preferred_language': preferredLanguage};
   }
 }

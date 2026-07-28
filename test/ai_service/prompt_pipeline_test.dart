@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../ai_service/domain/prompt/ai_case_type.dart';
+import '../../ai_service/domain/prompt/ai_user_role.dart';
 import '../../ai_service/domain/prompt/case_context.dart';
 import '../../ai_service/domain/prompt/memory_context.dart';
 import '../../ai_service/domain/prompt/prompt_pipeline.dart';
@@ -13,10 +15,13 @@ void main() {
       final pipeline = const PromptPipeline()
           .withContext(const SystemContext(locale: 'uz'))
           .withContext(
-            const UserContext(role: 'citizen', preferredLanguage: 'uz'),
+            const UserContext(
+              role: AIUserRole.citizen,
+              preferredLanguage: 'uz',
+            ),
           )
           .withContext(
-            const CaseContext(caseType: 'appeal', appealId: 'a1'),
+            const CaseContext(caseType: AICaseType.appeal, appealId: 'a1'),
           );
 
       final context = pipeline.compose();
@@ -25,6 +30,10 @@ void main() {
       expect(context.sectionFor('system'), {
         'locale': 'uz',
         'response_mode': 'default',
+      });
+      expect(context.sectionFor('user'), {
+        'role': 'citizen',
+        'preferred_language': 'uz',
       });
       expect(context.sectionFor('case'), {
         'case_type': 'appeal',
@@ -62,9 +71,24 @@ void main() {
   });
 
   group('CaseContext', () {
-    test('asserts exactly one of appealId/disputeId is provided', () {
+    test('asserts caseType matches which id was provided', () {
+      // appeal + disputeId -- mismatch.
       expect(
-        () => CaseContext(caseType: 'appeal', appealId: 'a1', disputeId: 'd1'),
+        () => CaseContext(caseType: AICaseType.appeal, disputeId: 'd1'),
+        throwsA(isA<AssertionError>()),
+      );
+      // dispute + appealId -- mismatch.
+      expect(
+        () => CaseContext(caseType: AICaseType.dispute, appealId: 'a1'),
+        throwsA(isA<AssertionError>()),
+      );
+      // appeal + both ids -- disputeId shouldn't be set at all.
+      expect(
+        () => CaseContext(
+          caseType: AICaseType.appeal,
+          appealId: 'a1',
+          disputeId: 'd1',
+        ),
         throwsA(isA<AssertionError>()),
       );
       expect(
@@ -72,8 +96,19 @@ void main() {
         // buzilgan assert'ni derlash vaqtida (const_eval_throws_exception)
         // baholaydi, ish vaqtidagi (runtime) AssertionError sifatida emas
         // — `throwsA` faqat ish vaqtidagi xatolikni ushlay oladi.
-        () => CaseContext(caseType: 'appeal'),
+        () => CaseContext(caseType: AICaseType.appeal),
         throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('accepts a matching caseType/id pair', () {
+      expect(
+        () => const CaseContext(caseType: AICaseType.appeal, appealId: 'a1'),
+        returnsNormally,
+      );
+      expect(
+        () => const CaseContext(caseType: AICaseType.dispute, disputeId: 'd1'),
+        returnsNormally,
       );
     });
   });
