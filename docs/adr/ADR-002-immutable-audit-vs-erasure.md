@@ -1,6 +1,6 @@
 # ADR-002: O'zgarmas audit jurnali vs ma'lumotni o'chirish (erasure) so'rovlari
 
-**Status:** Taklif qilingan
+**Status:** Qabul qilingan (2026-07-28) — dizayn qarori sifatida loyiha egasi tomonidan tasdiqlangan. **Eslatma:** bu faqat Variant B (pseudonymization) strategiyasining o'zi rasman qabul qilinganini bildiradi; amalga oshirish (SECURITY DEFINER funksiya yozish) hali qilinmagan — bu foydalanuvchi hisobini o'chirish feature'i rejalashtirilganda, alohida migratsiya sifatida bajariladi (pastdagi "Yakuniy tavsiya"ga qarang). Shuningdek, agar ADR-001'dagi huquqiy tekshiruv shaxsiy ma'lumotlarni o'chirish huquqi umuman talab qilinmasligini ko'rsatsa, bu ADR qayta ko'rib chiqilishi mumkin.
 
 **Darajasi:** Critical (Zero-Regret Audit, Critical topilma #2)
 

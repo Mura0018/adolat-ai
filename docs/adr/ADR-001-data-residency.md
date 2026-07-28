@@ -1,6 +1,12 @@
 # ADR-001: Data Residency — O'zbekiston shaxsiy ma'lumotlari qonuni vs Supabase hosting
 
-**Status:** Taklif qilingan (huquqiy tasdiqlash kutilmoqda) — bu ADR kod yoki migratsiya o'zgarishini **talab qilmaydi**, faqat qaror qabul qilish jarayonini boshlaydi.
+**Status:** Bloklangan — tashqi huquqiy tasdiqlash kutilmoqda (2026-07-28 holatiga hali so'ralmagan). Bu ADR kod yoki migratsiya o'zgarishini **talab qilmaydi**, faqat qaror qabul qilish jarayonini boshlaydi. Claude Code bu blokerni o'zi hal qila olmaydi — huquqshunos bilan aloqa loyiha egasining vazifasi.
+
+**Bloklanish sababi:** ADR-001'ning "Tavsiya etilgan qaror" bo'limidagi 1-qadam ("Huquqiy tekshiruv") hali bajarilmagan.
+
+**Keyingi qadam:** O'zbekiston shaxsiy ma'lumotlar qonunchiligi bo'yicha malakali huquqshunos/maslahatchiga rasmiy so'rov yuborish (quyidagi "Tavsiya etilgan qaror" bo'limidagi 3 ta savol bilan).
+
+**Mas'ul shaxs (Owner):** loyiha egasi (Claude Code emas — bu ADR'ning o'zida ham qayd etilganidek, yakuniy huquqiy xulosani Claude Code bera olmaydi).
 
 **Darajasi:** Critical (Zero-Regret Audit, Critical topilma #1)
 
