@@ -85,17 +85,17 @@ Bu bo'lim yuqoridagi rejalashtirilgan bosqich ketma-ketligi bilan **haqiqiy** qu
 **Qurilgan (rejalashtirilgan tartibdan farqli ketma-ketlikda):**
 
 - Bosqich 1'ning **backend qismi**: haqiqiy Supabase sxemasi, RLS siyosatlari (endi `is_admin()`/`owns_appeal()`/`is_dispute_party()`/`can_access_case()` orqali markazlashtirilgan — `docs/DATABASE.md`, "Umumiy konventsiyalar" bo'limi), Storage foundation va `profiles`ni avtomatik yaratuvchi autentifikatsiya trigger'i — to'liq bajarilgan va commit qilingan.
-- Bosqich 2 (Appeals) va Bosqich 3 (Disputes)ning **Flutter UI qismi** — murojaat/nizo yaratish, tahrirlash, yuborish, fayl biriktirish va AI tahlil natijasini ko'rish ekranlari — Clean Architecture uch qatlami (`data`/`domain`/`presentation`) bilan qurilgan, lekin Bosqich 1'ning Flutter UI qismidan (pastda) **oldin**.
+- Bosqich 2 (Appeals) va Bosqich 3 (Disputes)ning **Flutter UI qismi** — murojaat/nizo yaratish, tahrirlash, yuborish, fayl biriktirish va AI tahlil natijasini ko'rish ekranlari — Clean Architecture uch qatlami (`data`/`domain`/`presentation`) bilan qurilgan.
+- **Bosqich 1'ning Flutter UI qismi** (Phase 6, Module 1–3 doirasida, `docs/adr/ADR-006-hybrid-infrastructure-strategy.md`ga muvofiq): ro'yxatdan o'tish (Fuqaro/Tashkilot), SMS tasdiqlash, kirish, parolni tiklash oqimi to'liq qurilgan; Splash/App Entry Flow va GoRouter darajasidagi reaktiv auth guard (`authStateChangesProvider` + `refreshListenable`) ishlaydi; Fuqaro/Tashkilot uchun umumiy pastki navigatsiya (5 bo'lim) va Admin uchun alohida navigatsiya (5 bo'lim) `StatefulShellRoute.indexedStack` orqali qurilgan — `appeals`/`disputes` ekranlari endi shu navigatsiya orqali haqiqatan **yetib bo'ladigan**.
 
-**Qurilmagan — Bosqich 1'ning Flutter UI qismi (bilinga bo'shliq):**
+**Qurilmagan (rejalashtirilgan tartibga mos, muddatidan oldin emas):**
 
-- Ro'yxatdan o'tish, SMS tasdiqlash, kirish, parolni tiklash ekranlari qurilmagan.
-- Splash/App Entry Flow (mavjud sessiyani aniqlash) va GoRouter darajasidagi auth guard qurilmagan.
-- Rolga asoslangan navigatsiya skeleti (Fuqaro/Tashkilot/Admin uchun asosiy ekranlar) qurilmagan.
-- **Amaliy natija:** hozirgi holatda foydalanuvchi ilovaga kira olmaydi — qurilgan `appeals`/`disputes` ekranlariga hech qanday auth'dan o'tgan holda yetib bo'lmaydi (kirish nuqtasi yo'q). Bu topilma "Pre-Phase 6 Hardening Sprint" doirasida **ataylab tuzatilmadi**, chunki bu yangi funksiya qo'shishni talab qiladi (sprint ko'lami faqat mavjud poydevorni mustahkamlash bilan cheklangan) — Bosqich 6 boshlanishidan oldin yopilishi shart bo'lgan bilinga qoldirilgan ish sifatida shu yerda qayd etiladi.
-- Offline-First (Bosqich 4) qurilmagan — bu rejalashtirilgan tartibga mos, muddatidan oldin emas.
+- Bosh sahifa, Xabarnomalar va Admin'ning 4 ta bo'limi — navigatsiya skeleti tayyor (`docs/UI.md`, "Navigation Structure"dagi barcha bo'limlar bosib o'tiladi), lekin ichki tarkib hali placeholder (Bosqich 5'da to'liq ishga tushiriladi).
+- Bosqich 3'ning AI Service qismi, Offline-First (Bosqich 4) va Admin boshqaruv paneli (Bosqich 5) hali qurilmagan.
 
-**Xulosa:** MVP Scope va Release Criteria'dagi talablar o'zgarmagan; faqat qurilish TARTIBI rejalashtirilganidan farq qildi. Keyingi ish — avval Bosqich 1'ning qolgan Flutter UI qismini (yuqoridagi bo'shliqlar) yopish, so'ngra Bosqich 3'ning AI Service qismini, Bosqich 4'ni va Bosqich 5'ni yakunlash, va faqat shundan keyin rasmiy Bosqich 6 (yuqoridagi "Development Phases" bo'limidagi old shartga muvofiq) boshlanadi. Joriy sanada ("2026-07-28 holatiga") loyiha hali Bosqich 6'ni boshlash uchun tayyor emas — bu nafaqat bosqichlar tugallanmagani sababli, balki [`docs/adr/README.md`](./adr/README.md)da belgilangan ADR gate (ADR-001 hali Bloklangan) hali qondirilmagani sababli ham.
+**Amaliy natija (2026-07-28, Phase 6 Module 3 yakunida):** foydalanuvchi endi ilovaga to'liq kira oladi — ro'yxatdan o'tib (yoki kirib), o'z roliga mos asosiy ekranga yo'naltiriladi va `appeals`/`disputes` ekranlariga haqiqiy navigatsiya orqali yetadi. Avvalgi "kirish nuqtasi yo'q" degan bilinga bo'shliq yopildi.
+
+**Xulosa:** MVP Scope va Release Criteria'dagi talablar o'zgarmagan; faqat qurilish TARTIBI rejalashtirilganidan farq qildi. Keyingi ish — Bosqich 3'ning AI Service qismini, Bosqich 4'ni va Bosqich 5'ni yakunlash, va faqat shundan keyin rasmiy Bosqich 6 (yuqoridagi "Development Phases" bo'limidagi old shartga muvofiq) boshlanadi. Joriy sanada loyiha hali Bosqich 6'ni boshlash uchun tayyor emas — bu nafaqat bosqichlar tugallanmagani sababli, balki [`docs/adr/README.md`](./adr/README.md)da belgilangan ADR gate (ADR-001 hali Bloklangan) hali qondirilmagani sababli ham.
 
 ## Phase 2
 

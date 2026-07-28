@@ -4,6 +4,7 @@ Har bir biznes imkoniyat (feature) o'z papkasida, **Clean Architecture** ning uc
 
 ## Mavjud feature'lar (2026-07-28 holatiga)
 
+- **`auth`** — Ro'yxatdan o'tish (Fuqaro/Tashkilot), SMS tasdiqlash, kirish, parolni tiklash, chiqish, sessiya tiklash (docs/UI.md, "Authentication Screens"/"App Entry Flow"). To'liq uch qatlam — `docs/ARCHITECTURE.md`da va'da qilingan "namunaviy (reference) feature". `domain`/`presentation` qatlamlarida `package:supabase_flutter` importi yo'q (`docs/adr/ADR-006-hybrid-infrastructure-strategy.md`ga muvofiq tekshirilgan) — faqat `data/datasources/auth_remote_datasource.dart`da.
 - **`appeals`** — Murojaat (appeal) yaratish, tahrirlash, yuborish, holatini kuzatish. To'liq uch qatlam (`data`/`domain`/`presentation`, jumladan `usecases` va `screens`) — quyidagi konventsiyaning to'liq namunasi.
 - **`disputes`** — Nizo (dispute) yaratish, tomonlar faktlarini kiritish, AI tahlilini kutish/ko'rish. `appeals` bilan bir xil to'liq tuzilma.
 - **`attachments`** — Murojaat/nizoga fayl biriktirish (Storage integratsiyasi). Soddalashtirilgan tuzilma — `presentation/screens`/`widgets` va `domain/usecases` yo'q, chunki bu feature mustaqil ekranga ega emas, `appeals`/`disputes` ekranlari ichida providerlar orqali ishlatiladi.
