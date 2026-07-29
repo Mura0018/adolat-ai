@@ -26,6 +26,16 @@ enum AIProtocolErrorCode {
   /// maydon yo'q) -- bu `AIFailure`da yo'q, chunki bu backend ICHKI
   /// xatoligi emas, balki KLIENT xatoligi.
   invalidRequest,
+
+  /// Klient hech qanday yaroqli hisob ma'lumoti (credential) taqdim
+  /// etmadi -- `gateway/auth/` (Module 4, Phase 3B, "Authentication
+  /// Boundary").
+  unauthenticated,
+
+  /// Klient autentifikatsiyadan o'tgan, lekin so'ralgan amalga huquqi
+  /// yo'q (masalan `AIRequestEnvelope.userId` autentifikatsiya
+  /// qilingan shaxsdan farq qiladi) -- `gateway/dispatch/`.
+  unauthorized,
   unknown,
 }
 

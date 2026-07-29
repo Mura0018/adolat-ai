@@ -141,6 +141,38 @@ final class AIConversationClosedFailure extends AIFailure {
       'AIConversationClosedFailure(conversationId: $conversationId)';
 }
 
+/// Klient shu so'rovda o'zini kimligini (`AIRequestEnvelope.userId`)
+/// autentifikatsiya qatlami tasdiqlagan shaxsdan (`AIAuthContext.userId`)
+/// FARQLI deb da'vo qildi (Module 4, Phase 3B, "Authentication
+/// Boundary" -- `gateway/dispatch/ai_request_dispatcher.dart`).
+/// Dasturlash xatosi emas -- soxtalashtirish (spoofing) urinishi yoki
+/// eskirgan klient holati, hech qachon qayta urinilmaydi.
+final class AIUnauthorizedFailure extends AIFailure {
+  const AIUnauthorizedFailure();
+
+  @override
+  bool get isRetryable => false;
+
+  @override
+  String toString() => 'AIUnauthorizedFailure()';
+}
+
+/// So'rov shakli (masalan `context` maydonining kutilgan ichki
+/// tuzilishi) yaroqsiz -- backend ICHKI xatosi emas, KLIENT xatosi
+/// (Module 4, Phase 3B, "Request Dispatcher"). Bir xil noto'g'ri
+/// so'rovni qayta yuborish bir xil natija beradi -- qayta urinilmaydi.
+final class AIInvalidRequestFailure extends AIFailure {
+  const AIInvalidRequestFailure({required this.reason});
+
+  final String reason;
+
+  @override
+  bool get isRetryable => false;
+
+  @override
+  String toString() => 'AIInvalidRequestFailure(reason: $reason)';
+}
+
 /// Yuqoridagilarning hech biriga to'g'ri kelmaydigan, kutilmagan
 /// xatolik. Konservativ standart -- qayta urinilmaydi (sababi
 /// noma'lum bo'lgani uchun xavfsiz taraf tanlanadi).
