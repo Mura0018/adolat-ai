@@ -1,8 +1,10 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A–5B)
 
 Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang. Phase 4C — o'sha kontraktni HAQIQIY ijro zanjiriga ulaydigan **READINESS** bosqichi (rate-limit/kvota gateway darajasida yoqiladigan, kompozitsiya ildizi pluggable qilinadigan, yangi adapter chegaralari qo'shiladigan), quyidagi "Backend Implementation Readiness (Module 4, Phase 4C)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi hamon YO'Q.
 
 **Module 5, Phase 5A (AI Configuration and Control Foundation):** Module 4 butunlay "bitta so'rov qanday ishlaydi" (request pipeline) haqida edi. Module 5 boshqa savolga javob beradi: **AI provayderlarning O'ZI (qaysi yoqilgan, qaysi model, qaysi limitlar, qancha xarajat) qanday BOSHQARILADI** -- admin panel/backend konfiguratsiya qatlami orqali, Flutter ilovasi ichida HECH QACHON emas. Yangi `ai_service/config/` papkasi (`domain/`, `runtime/`, `admin/` -- pastdagi "AI Configuration and Control Foundation (Module 5, Phase 5A)" bo'limiga qarang) shu savolga javob beradi. Hech qanday OpenAI/Gemini/Claude SDK, API kalit yoki haqiqiy AI chaqiruvi qo'shilmagan -- faqat BOSHQARUV arxitekturasi.
+
+**Module 5, Phase 5B (AI Case and Conversation Foundation):** Phase 5A "provayderlar qanday boshqariladi" savoliga javob berdi. Phase 5B esa foydalanuvchi TOMONIGA qaytadi: **foydalanuvchi muammosini qanday YARATADI, AI bilan qanday MULOQOT qiladi, va bu jarayon qanday KUZATILADI (lifecycle)**. Yangi `ai_service/domain/case/` -- `AIConversation` (Module 4)dan YUQORI darajadagi `Case` mavhumligi: toifa (`CaseCategory`), muhimlik (`CasePriority`), hayot-davri holati (`CaseStatus`, yettita bosqich) va voqealar tarixi (`CaseTimeline`). Har bir `Case` bitta `AIConversation`ga ishora qiladi (`conversationId`), lekin suhbat tarixining o'zi mustaqil qoladi. Foydalanuvchi muammoni tushuntirganda ishga tushadigan intake oqimi FAQAT soxta (mock) savol generatoriga tayanadi (`MockCaseIntakeAssistant`) -- hech qanday huquqiy xulosa, hech qanday haqiqiy AI. Pastdagi "AI Case and Conversation Foundation (Module 5, Phase 5B)" bo'limiga qarang.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -980,6 +982,222 @@ panel UI (Flutter yoki boshqa); `AIProviderConfig.activeModel`/
 `usageLimits`/`tokenLimits`/`costControl`/`AIGlobalSettings.aiFeatureEnabled`ning
 haqiqiy ijro nuqtasiga ulanishi; OpenAI/Gemini/Claude SDK, API kalit
 yoki haqiqiy AI chaqiruvi (talab: "DO NOT connect real AI").
+
+## AI Case and Conversation Foundation (Module 5, Phase 5B)
+
+Foydalanuvchiga qaratilgan AI muammo-yechish tizimining poydevori --
+foydalanuvchi ish (case) yarata oladi, AI bilan muloqot qila oladi va
+ish hayot-davrini kuzata oladi. Butun kod `ai_service/domain/case/`
+(entity'lar), `ai_service/domain/repositories/case_repository.dart`
+(shartnoma), `ai_service/data/session/in_memory_case_repository.dart`
+(foundation implementatsiyasi) va `ai_service/domain/usecases/`da
+(orkestratsiya) joylashgan -- hammasi backend (`ai_service/`) tomonida,
+`lib/`dan mustaqil (`test/ai_service/architecture_boundary_test.dart`
+avtomatik tekshiradi).
+
+### 1. Case Domain Model
+
+Beshta yangi tur, hammasi provayderdan MUSTAQIL (`ai_service/domain/case/`):
+
+| Tur | Fayl | Vazifasi |
+|---|---|---|
+| `Case` | `case.dart` | Markaziy entity -- foydalanuvchi, toifa, muhimlik, holat, suhbat ishorasi, timeline |
+| `CaseStatus` | `case_status.dart` | Yettita hayot-davri bosqichi + o'tish qoidasi |
+| `CaseCategory` | `case_category.dart` | `complaint`/`application`/`legalAssistance`/`documentGeneration` |
+| `CasePriority` | `case_priority.dart` | `low`/`normal`/`high`/`urgent` -- operatsion navbat, huquqiy baho EMAS |
+| `CaseTimeline` | `case_timeline.dart` | O'zgarmas voqealar tarixi (`CaseTimelineEvent` ro'yxati) |
+
+**`CaseCategory` nega aynan shu to'rtta qiymat:** talab "The model must
+support future: complaints, applications, legal assistance, document
+generation" -- to'g'ridan-to'g'ri enum qiymatlariga aylantirildi.
+**`AICaseType` (`domain/prompt/ai_case_type.dart`, Module 4, Phase 2B:
+`appeal`/`dispute`) bilan ADASHTIRILMASIN** -- bu ALLAQACHON MAVJUD,
+DB-asosli (`docs/DATABASE.md`) rasmiy ish turi, prompt context
+yig'ishda ishlatiladi. `CaseCategory` esa undan OLDINGI, YUQORI
+darajadagi tushuncha: foydalanuvchi AI bilan suhbatni BOSHLAGANDA nima
+olishni xohlayotgani. Bitta `Case` natijada bir nechta rasmiy
+`appeal`/`dispute` yozuviga olib kelishi mumkin, yoki umuman
+aylanmasligi mumkin (masalan faqat maslahat).
+
+### 2. Case Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> created
+    created --> understanding
+    understanding --> informationGathering
+    informationGathering --> analysisReady
+    analysisReady --> actionPlanning
+    actionPlanning --> completed
+    completed --> archived
+    archived --> [*]
+
+    %% Faol bosqichlar orasida ikkala yo'nalishda ham erkin harakat --
+    %% AI intake iterativ (masalan analysisReady'da yetarli ma'lumot
+    %% yo'qligi aniqlansa, informationGathering'ga qaytish mumkin).
+    understanding --> created
+    informationGathering --> understanding
+    analysisReady --> informationGathering
+    actionPlanning --> analysisReady
+
+    %% Istalgan FAOL bosqichdan to'g'ridan-to'g'ri arxivlash mumkin.
+    created --> archived
+    understanding --> archived
+    informationGathering --> archived
+    analysisReady --> archived
+    actionPlanning --> archived
+```
+
+`isValidCaseStatusTransition({required from, required to})`
+(`case_status.dart`) -- XOLIS (pure) qoida funksiyasi, `AIRetryPolicy.
+shouldRetry()` (Module 4, Phase 2C) bilan bir xil ruhda:
+
+1. O'zi-o'ziga "o'tish" YO'Q.
+2. `archived` -- YAKUNIY, undan hech qayerga o'tib bo'lmaydi.
+3. Istalgan FAOL holatdan `archived`ga o'tish mumkin.
+4. `completed`dan FAQAT `archived`ga -- qayta ochish (reopen) ATAYLAB
+   yo'q (`AIConversation.close()`, Module 4, Phase 2A bilan bir xil
+   "yopilgan holat yakuniy" falsafasi -- qo'shimcha ma'lumot kerak
+   bo'lsa, YANGI ish yaratilishi kutiladi).
+5. Qolgan faol holatlar orasida ikkala yo'nalishda ham erkin harakat.
+
+**"Do not implement legal decisions" qanday ta'minlangan:** bu qoida
+FAQAT holatlar orasidagi MANTIQIY ketma-ketlikni tekshiradi -- QAYSI
+holatga QACHON o'tish kerakligi haqida hech qanday QAROR qabul
+qilmaydi (masalan "yetarli ma'lumot to'plandimi" degan savolga javob
+bermaydi). Bu qaror har doim CHAQIRUVCHIning (kelgusida admin/AI
+yordamchisi) qo'lida qoladi -- `AdvanceCaseStatusUseCase`
+(`domain/usecases/advance_case_status_usecase.dart`)ning o'zi ham
+buni "hal qilmaydi", faqat chaqirilganda tekshiradi.
+
+### 3. Conversation Integration
+
+```mermaid
+flowchart LR
+    Case["Case\n(domain/case/case.dart)"] -->|"conversationId\n(bitta ishora)"| Conv["AIConversation\n(domain/entities/, Module 4)"]
+    Conv -->|"messages: List&lt;AIMessage&gt;\n(mustaqil, Case bu haqda bilmaydi)"| Msgs["Suhbat tarixi"]
+```
+
+Talabning har bir bandi qanday ta'minlangan:
+
+- **"Every conversation belongs to a case"** -- `StartCaseIntakeUseCase`
+  (`domain/usecases/start_case_intake_usecase.dart`) yangi `Case` VA
+  yangi `AIConversation`ni BIR VAQTDA, BIRGALIKDA yaratadi -- suhbat
+  hech qachon "egasiz" holatda qolmaydi.
+- **"Case keeps conversation reference"** -- `Case.conversationId`
+  (`String`, oddiy ishora, `AIConversation` OBYEKTINING O'ZI EMAS).
+- **"Conversation history remains independent"** -- `AIConversation`
+  (Module 4, Phase 1) HECH QACHON `Case`ni import qilmaydi/bilmaydi --
+  `AIConversation`ning o'zi "bu klass shaxsan qaysi appeal/disputega
+  tegishli ekanligini bilmaydi" deb ALLAQACHON hujjatlashtirilgan edi
+  (yuqoridagi "AI Session / Conversation Repository Contracts"
+  bo'limi) -- Phase 5B bu invariantni BUZMAYDI, faqat undan
+  foydalanadi. Suhbat tarixini o'qish uchun har doim ALOHIDA
+  `ConversationRepository.getById(case.conversationId)` chaqiriladi.
+- **"No AI provider dependency"** -- `ai_service/domain/case/`ning
+  HECH BIR fayli `AIProviderId`/`AIProviderAdapter`/`AIRepository`ni
+  import qilmaydi (`test/ai_service/start_case_intake_usecase_test.dart`,
+  "does not depend on any real AI provider" -- arxitektura qarorini
+  aniq, qidiriladigan tarzda tasdiqlaydi).
+
+### 4. User Problem Intake Flow
+
+```mermaid
+sequenceDiagram
+    participant U as Foydalanuvchi
+    participant UC as StartCaseIntakeUseCase
+    participant CR as CaseRepository
+    participant ConvR as ConversationRepository
+    participant IA as CaseIntakeAssistant\n(MockCaseIntakeAssistant)
+
+    U->>UC: problemDescription, category
+    UC->>ConvR: create()
+    UC->>CR: create(userId, category, problemSummary, conversationId)
+    Note over CR: status = created,\ntimeline = [caseCreated]
+    UC->>ConvR: appendMessage(role: user, problemDescription)
+    UC->>IA: generateClarificationQuestions(problemDescription, category)
+    IA-->>UC: List&lt;CaseIntakeQuestion&gt; (OLDINDAN TAYYORLANGAN, mock)
+    loop har bir savol uchun
+        UC->>ConvR: appendMessage(role: assistant, question.text)
+        UC->>CR: addTimelineEvent(clarificationQuestionAsked)
+    end
+    UC->>CR: updateStatus(understanding)
+    UC-->>U: Case (status: understanding)
+```
+
+Keyingi bosqich -- `RecordCaseAnswerUseCase`
+(`domain/usecases/record_case_answer_usecase.dart`): foydalanuvchi
+javob berganda, javob suhbatga (`role: user`) VA timeline'ga
+(`userAnswered`) yoziladi. **"Case becomes ready for next action"ni
+KIM/QACHON hal qilishi ATAYLAB bu usecase'ning ishi EMAS** -- holatni
+oldinga siljitish alohida `AdvanceCaseStatusUseCase` orqali, aniq
+chaqiruv bilan amalga oshiriladi (talab: "Do not implement legal
+decisions" -- "yetarli ma'lumotmi" degan qaror kod ichida
+taxmin qilinmaydi).
+
+**"Use mock AI responses only":** `CaseIntakeAssistant`
+(`domain/case/intake/case_intake_assistant.dart`) -- interfeys,
+`MockCaseIntakeAssistant` (`data/intake/mock_case_intake_assistant.dart`)
+-- yagona implementatsiya, `CaseCategory`ga qarab OLDINDAN
+TAYYORLANGAN, deterministik savollar qaytaradi (matnning o'zini
+"tushunmaydi" -- haqiqiy NLP/LLM chaqiruvi YO'Q). Haqiqiy AI
+integratsiyasi kelgusida shu INTERFEYS ortida almashtiriladi --
+chaqiruvchi kod (`StartCaseIntakeUseCase`) o'zgarmaydi.
+
+### 5. Case Repository Contract
+
+`CaseRepository` (`domain/repositories/case_repository.dart`) --
+talabning beshta bandi bilan 1:1 mos:
+
+| Talab bandi | Metod |
+|---|---|
+| create case | `create({userId, category, problemSummary, conversationId, priority})` |
+| update status | `updateStatus(caseId, newStatus)` |
+| add timeline event | `addTimelineEvent(caseId, event)` |
+| retrieve case | `getById(caseId)` |
+| list user cases | `listForUser(userId)` |
+
+Foundation implementatsiyasi -- `InMemoryCaseRepository` (`data/
+session/in_memory_case_repository.dart`), `InMemoryConversationRepository`
+(Module 4, Phase 2A) bilan bir xil naqsh va bir xil cheklov ("No real
+database implementation yet" -- bitta process instance doirasida).
+
+### 6. Security Rules
+
+| Qoida | Qanday ta'minlangan |
+|---|---|
+| User can only access own cases | `GetCaseUseCase` (`domain/usecases/get_case_usecase.dart`) -- `case.userId != requestingUserId` bo'lsa `CaseAccessDeniedException`. `ListUserCasesUseCase` -- `CaseRepository.listForUser()`ning o'zi natijani ALLAQACHON chegaralaydi. `AIRequestDispatcher`ning `auth.userId` tekshiruvi (Module 4, Phase 3B) bilan bir xil qatlamlash -- repository "aqlsiz", ruxsat mantig'i usecase darajasida. |
+| No sensitive information in domain logs | `Case.toString()` `problemSummary`ni (foydalanuvchi muammosining xom matni, sezgir bo'lishi mumkin) HECH QACHON chiqarmaydi -- faqat `id`/`category`/`status`/`priority`. `AIBackendCredential.toString()` (Module 4, Phase 4B) bilan bir xil ehtiyotkorlik. `test/ai_service/case_test.dart`, "never includes the raw problemSummary" bilan tasdiqlangan. |
+| No secrets stored | `Case`/`CaseTimelineEvent`/`CaseRepository`ning hech birida hisob ma'lumoti/kalit uchun MAYDON yo'q -- bu qatlam AI provayder konfiguratsiyasi (`config/`, Phase 5A)dan butunlay mustaqil. |
+
+### Kelgusi hujjat ish oqimi (Future Document Workflow) tayyorgarligi
+
+`CaseCategory.documentGeneration` (yuqoridagi "1-band"ga qarang) --
+kelgusida foydalanuvchi uchun hujjat (ariza matni va h.k.)
+tayyorlanadigan oqimning NOMLANGAN, lekin HALI QURILMAGAN kirish
+nuqtasi. Talab: "DO NOT generate final legal documents" -- shuning
+uchun Phase 5B bu yo'nalishda FAQAT quyidagilarni tayyorlaydi, hech
+narsani amalga oshirmaydi:
+
+- `CaseStatus.actionPlanning` -- hujjat qanday shakllanishi
+  REJALASHTIRILADIGAN bosqich (hujjatning o'zi emas).
+- `CaseTimeline`/`CaseTimelineEventType.note` -- kelgusida hujjat
+  tayyorlash jarayonining oraliq qadamlari (masalan "qoralama
+  tayyorlandi", "foydalanuvchi tasdiqladi") shu turdagi hodisalar
+  sifatida yozilishi mo'ljallangan, yangi enum qiymati qo'shishni
+  talab qilmaydi.
+- `Case.conversationId` -- kelgusi hujjat-generatsiya AI so'rovi
+  (haqiqiy provayder integratsiyasi bilan birga keladi) xuddi
+  shu suhbat tarixidan KONTEKST sifatida foydalanishi mo'ljallangan
+  -- `ContextAssembler`/`MemoryContext` (Module 4, Phase 2B) allaqachon
+  shu maqsad uchun joy ajratgan.
+
+**Bu bosqichda YO'Q:** hujjat shabloni/generatsiya mantig'i, hujjatni
+saqlash/eksport qilish, `appeals`/`disputes` (`docs/DATABASE.md`) bilan
+RASMIY bog'lanish (hali qaror qilinmagan -- kelgusi bosqich), va
+albatta -- haqiqiy AI chaqiruvi, API kalit, huquqiy xulosa mantig'i
+(talab: "DO NOT connect real AI providers... DO NOT create legal
+verdict logic... DO NOT generate final legal documents").
 
 ## Bog'liq hujjatlar
 
