@@ -1,6 +1,6 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–3B)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4A)
 
-Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.**
+Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -14,6 +14,8 @@ Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan A
 
 **Architecture Review yangilanishi (texnik qarz yopildi):** Module 4, Phase 1–3B bo'yicha to'liq arxitektura ko'rib chiqish (enterprise architecture review) o'tkazildi — hech qanday Clean Architecture/bog'liqlik yo'nalishi buzilishi topilmadi. Ikkita ANIQLANGAN (lekin hujjatlashtirilmagan) texnik qarz moddasi yopildi: (1) `ai_service/`ning Flutter/`lib/`dan mustaqilligi endi faqat kod ko'rib chiqish intizomi bilan emas, avtomatik test bilan ta'minlanadi (`test/ai_service/architecture_boundary_test.dart`, quyidagi "Nega `lib/`dan tashqarida"ga qarang); (2) `AICancellationRegistry.register()`dagi concurrency chegara holati (bir xil suhbat uchun ikkinchi so'rov birinchisining tokenini jimgina "orphan" qilib qo'yishi) tuzatildi — endi eskisi aniq bekor qilinadi (quyidagi "AI Session / Conversation Repository Contracts"dagi "Cancellation"ga qarang).
 
+**Phase 4A yangilanishi (AI Integration Foundation):** Yangi `lib/core/ai_client/` -- Flutter ilovasi bilan kelgusi haqiqiy backend orasidagi INTEGRATSIYA POYDEVORI, hozircha faqat soxta (mock) javoblar bilan. `AiGatewayClient` (provayderdan mustaqil klient interfeysi), `protocol/` (backend `protocol/`ning klient tomonidagi mustaqil ko'chirmasi), `AiClientContextAssembler` (backend `ContextAssembler`ning klient hamkasbi), `AiResponseMapper` (simli modellarni domen modellariga, xatoliklarni esa ilovaning mavjud `Failure` turiga tarjima qiladi), `AiRequestPipeline` (to'liq quvur: Conversation -> Context Assembler -> AI Gateway -> Backend Protocol -> Response Mapper), `MockAiGatewayClient` (soxta oqim generatori), `AiConnectivityMonitor`/`AiDiagnosticsLogger` (interfeys, implementatsiyasiz/analitikasiz). Quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Bu -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi**.
+
 ## Nega `lib/`dan tashqarida
 
 `docs/ARCHITECTURE.md`ning "AI Service" bo'limi va `docs/DATABASE.md`dagi `ai_analyses` jadvali uchun RLS talabi ("faqat service role yozadi") allaqachon aniq belgilagan: **Flutter klient AI provayderni hech qachon to'g'ridan-to'g'ri chaqirmaydi.** Agar `AIRepository`ning implementatsiyasi mobil ilova ichida bo'lganida, provayder API kalitlari (OpenAI/Gemini/Claude) ilova binarida saqlanishi kerak bo'lardi — bu `docs/SECURITY.md`, "Secrets Management" talabini bevosita buzadi va foydalanuvchiga AI so'rovini soxtalashtirish/AI xulosasini chetlab o'tish imkonini beradi (`docs/DEVELOPMENT_RULES.md`, 15–16-bandlar — AI xolisligi shu orqali kafolatlanadi).
@@ -26,8 +28,20 @@ Shu sababli `ai_service/` **backend/serverless muhitda** (Supabase Edge Function
 
 ```mermaid
 flowchart TB
-    subgraph Client["Flutter Client (lib/) — o'zgarmadi"]
-        AIAnalysesFeature["features/ai_analyses/\n(faqat o'qish)"]
+    subgraph Client["Flutter Client (lib/)"]
+        AIAnalysesFeature["features/ai_analyses/\n(faqat o'qish, o'zgarmadi)"]
+        subgraph AiClientCore["core/ai_client/ — Phase 4A"]
+            ClientPipeline["AiRequestPipeline"]
+            ClientAssembler["AiClientContextAssembler\n+ 5 ta AiClientPromptContext"]
+            ClientGatewayIface["AiGatewayClient\n(abstrakt)"]
+            ClientMock["MockAiGatewayClient"]
+            ClientMapper["AiResponseMapper"]
+            ClientDomainEvent["AiClientStreamEvent\n(Failure bilan)"]
+            ClientProtocol["protocol/ (mirror)\nAiRequestEnvelope /\nAiProtocolStreamEvent"]
+            ClientConnMonitor["AiConnectivityMonitor\n(interfeys, implementatsiyasiz)"]
+            ClientLogger["AiDiagnosticsLogger"]
+        end
+        AppFailure["core/error/Failure\n(ilovaning yagona xatolik turi)"]
     end
 
     subgraph Backend["Backend / Serverless (kelgusi joylashtirish)"]
@@ -91,6 +105,17 @@ flowchart TB
     DB[("Supabase\npublic.ai_analyses\n(faqat service role yozadi)")]
 
     AIAnalysesFeature -."so'raydi (kelgusi integratsiya)".-> ReqEnv
+    ClientPipeline --> ClientAssembler
+    ClientAssembler --> ClientProtocol
+    ClientPipeline --> ClientGatewayIface
+    ClientGatewayIface -.implements.-> ClientMock
+    ClientGatewayIface --> ClientProtocol
+    ClientPipeline --> ClientMapper
+    ClientMapper --> ClientDomainEvent
+    ClientMapper -."tarjima qiladi".-> AppFailure
+    ClientPipeline -."ixtiyoriy, hozircha null".-> ClientConnMonitor
+    ClientPipeline --> ClientLogger
+    ClientGatewayIface -."kelgusida\n(HTTP/WebSocket -- haqiqiy backend)".-> GatewayIface
     Transport -."kelgusida\n(HTTP/WebSocket/gRPC)".-> ReqEnv
     Authenticator -."kelgusida\n(HTTP handler)".-> AuthCtx
     ReqEnv --> GatewayIface
@@ -137,6 +162,8 @@ flowchart TB
 **Muhim:** `Handler → DB` bog'lanishi hozircha **kelgusi bosqich** sifatida belgilangan — Module 4, Phase 1 faqat `AIServiceHandler` gacha bo'lgan zanjirni quradi (so'rovni qabul qilish → xavfsizlik tekshiruvi joyi → provayderga uzatish shakli). `ai_analyses` jadvaliga haqiqiy yozish integratsiyasi keyingi bosqichda qo'shiladi.
 
 **Muhim (Phase 3B):** `GatewayImpl → ReqDispatch → SendUC` — `Handler → StartUC/SendUC/CancelUC/CloseUC` zanjiridan **butunlay mustaqil** ikkinchi yo'l. `AIServiceLocator.buildGateway()` `AIServiceHandler`ni umuman qurmaydi/ishlatmaydi — `AIRequestDispatcher`ni to'g'ridan-to'g'ri `SendConversationMessageUseCase`ga ulaydi (hozircha faqat xabar yuborish amali simli protokol orqali ochilgan, `StartUC`/`CancelUC`/`CloseUC` uchun mos konvert turi yo'q — yuqoridagi "Backend Gateway" bo'limiga qarang). `build()` va `buildGateway()` bir vaqtda chaqirilsa, ikkalasi MUSTAQIL `ConversationRepository` nusxasiga ega bo'ladi (suhbat holati ulashilmaydi) — amalda faqat bittasi ishlatilishi kutiladi.
+
+**Muhim (Phase 4A):** `ClientGatewayIface -.kelgusida.-> GatewayIface` chizig'i -- diagrammadagi YAGONA `Client` ↔ `Backend` bog'lanishi -- ATAYLAB nuqtali (hali yo'q): `ClientGatewayIface`ning hozirgi yagona implementatsiyasi `ClientMock` (`MockAiGatewayClient`) hech qanday tarmoqqa chiqmaydi, butun javobni xotirada generatsiya qiladi. `core/ai_client/` `ai_service/`dagi HECH BIR turni import qilmaydi (`ClientProtocol` — `protocol/`ning MUSTAQIL ko'chirmasi, o'zining `AiRequestEnvelope`/`AiProtocolStreamEvent`i bilan) — bu chegara `test/core/ai_client/architecture_boundary_test.dart` orqali avtomatik tekshiriladi (`test/ai_service/architecture_boundary_test.dart`ning qarama-qarshi yo'nalishi). Batafsil: quyidagi "Klient Integratsiya Poydevori" bo'limi.
 
 ## Request Flow
 
@@ -327,6 +354,73 @@ Phase 3A'dagi kabi aniq chegara: Gateway qatlami FAQAT `ai_service/` ICHIDAGI, s
 - `AIAuthenticator`/`AIConnectivityMonitor`/`AITransport`ning istalgan konkret implementatsiyasi.
 - Provayder tanlash strategiyasi (`selectProvider` — chaqiruvchi tomonidan qo'lda in'ektsiya qilinadi, standart fallback zanjiri yo'q).
 - `AIServiceHandler` (`build()` yo'li) va `AIGateway` (`buildGateway()` yo'li) orasidagi birlashtirish — ikkalasi mustaqil qolmoqda.
+
+## Klient Integratsiya Poydevori (Module 4, Phase 4A)
+
+Yuqoridagi barcha bo'limlar `ai_service/` (backend) haqida edi. Bu bo'lim -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi** -- Flutter klient (`lib/core/ai_client/`) tomonini tasvirlaydi: ilova AI Gateway bilan qanday gaplashadi, hozircha esa faqat soxta (mock) javoblar bilan.
+
+**Nega `ai_service/`ni import qilmaydi:** `lib/` `ai_service/`ga hech qachon bog'liq bo'la olmaydi (yuqoridagi "Nega `lib/`dan tashqarida"). Shuning uchun `core/ai_client/protocol/` -- `ai_service/protocol/`ning har bir klassini (`AiRequestEnvelope`, `AiProtocolStreamEvent`, `AiProtocolError`, ...) bir xil JSON shaklga, lekin MUSTAQIL Dart klassiga ega qilib ko'chiradi -- xuddi loyihaning `AIUserRole`/`UserRole` juftligi (`ai_service/domain/prompt/ai_user_role.dart`) bilan bir xil, allaqachon o'rnatilgan konventsiya. `test/core/ai_client/architecture_boundary_test.dart` bu chegarani (`lib/` -> `ai_service/` yo'nalishida) avtomatik tekshiradi -- `test/ai_service/architecture_boundary_test.dart`ning qarama-qarshi tomoni.
+
+### End-to-End So'rov Oqimi
+
+```
+Foydalanuvchi amali -> Conversation -> Context Assembler -> AI Gateway -> Backend Protocol -> Response Mapper
+```
+
+`AiRequestPipeline` (`ai_request_pipeline.dart`) shu zanjirning yagona bog'lovchisi:
+
+1. **Foydalanuvchi amali / Conversation** -- chaqiruvchi (kelgusi chat controller) joriy `AiClientConversation`ni (mahalliy, optimistic nusxa -- `domain/ai_client_conversation.dart`) va xabar matnini beradi. `AiRequestPipeline` bu obyektni O'ZI o'zgartirmaydi -- chaqiruvchi qaytgan hodisalarga qarab yangi nusxa yaratadi (`AIConversation`ning backend'dagi o'zgarmas naqshi bilan bir xil ruh, `AI Session / Conversation Repository Contracts`ga qarang).
+2. **Context Assembler** -- `AiClientContextAssembler.assemble()` beshta context'ni (majburiy: System/User/Safety, ixtiyoriy: Case/Memory -- backend `ContextAssembler` bilan bir xil qat'iy shartnoma) bitta `Map<String, dynamic>`ga yig'adi.
+3. **AI Gateway** -- `AiGatewayClient.sendMessage()` chaqiriladi (hozircha `MockAiGatewayClient`).
+4. **Backend Protocol** -- natija `Stream<AiProtocolStreamEvent>` (simli, klient-tomon mirror).
+5. **Response Mapper** -- `AiResponseMapper.mapStreamEvent()` har bir hodisani `AiClientStreamEvent`ga (domen, presentation qatlami ko'radigan yagona tur) tarjima qiladi.
+
+**Offline Handling (talab qilingan tayyorgarlik, haqiqiy implementatsiya YO'Q):** `AiConnectivityMonitor` (`connectivity/`) -- faqat interfeys, backend hamkasbi bilan bir xil ataylab qilingan tanlov. `AiRequestPipeline` uni IXTIYORIY bog'liqlik sifatida qabul qiladi; `null` bo'lsa (hozirgi standart holat) hech qanday tekshiruv qilinmaydi. Berilsa va `currentStatus == offline` bo'lsa, so'rov gateway'ga UMUMAN yuborilmasdan darhol `Failure.network()` bilan yakunlanadi. Haqiqiy monitor (masalan `connectivity_plus` ustiga qurilgan) qo'shilganda faqat shu joyga in'ektsiya qilinadi -- pipeline o'zgarmaydi.
+
+### Response Mapping Oqimi
+
+`AiResponseMapper` (`mapping/ai_response_mapper.dart`) ikkita mustaqil tarjimani bajaradi:
+
+1. **`AiProtocolStreamEvent` -> `AiClientStreamEvent`** -- 5 holatning har biri (`started`/`chunk`/`completed`/`cancelled`/`failed`) mos domen hodisasiga o'tadi; `completed` uchun `AiResponseEnvelope.assistantMessage` `AiClientMessage`ga o'raladi.
+2. **`AiProtocolError` -> `Failure`** -- **AI-ga xos ikkinchi xatolik ierarxiyasi ATAYLAB yaratilmagan.** `core/error/failure.dart`dagi ilovaning YAGONA, mavjud `Failure` turi ishlatiladi, shunda `Result<T>`, `FailureUserMessage.userMessage`, `describeErrorForUser()` kabi butun ilova bo'ylab ishlaydigan mexanizmlar AI oqimi uchun ham o'zgarishsiz ishlaydi:
+
+   | `AiProtocolErrorCode` | `Failure` varianti |
+   |---|---|
+   | `network`, `timeout` | `Failure.network()` |
+   | `rateLimited`, `providerError`, `providerNotConfigured` | `Failure.server(message, code: ...)` |
+   | `safetyRejected`, `conversationNotFound`, `conversationClosed`, `invalidRequest` | `Failure.validation(message: ...)` |
+   | `unauthenticated`, `unauthorized` | `Failure.permissionDenied(message: ...)` |
+   | `unknown` | `Failure.unknown(message: ...)` |
+
+   Bu jadval `test/core/ai_client/mapping/ai_response_mapper_test.dart`da `AiProtocolErrorCode.values`ning barchasi bo'yicha to'liq (exhaustive) testlangan. Backend'dan kelgan xom xatolik matni (`AiProtocolError.message`) `Failure`ning o'zida saqlanishi mumkin, lekin UI'ga hech qachon to'g'ridan-to'g'ri chiqarilmaydi -- `FailureUserMessage.userMessage` xavfsiz muqobilni beradi (`docs/SECURITY.md`, "API Security").
+
+### Mock Integratsiya Oqimi
+
+`MockAiGatewayClient` (`mock/mock_ai_gateway_client.dart`) -- `AiGatewayClient`ning yagona, hozirgi implementatsiyasi:
+
+- Hech qanday tarmoq chaqiruvi, hech qanday provayder SDK'si YO'Q -- butun javob (`responseText`) xotirada, so'zma-so'z bo'laklarga (`wordsPerChunk`) bo'lib, `chunk` ketma-ketligi sifatida generatsiya qilinadi, so'ng `completed` bilan yakunlanadi.
+- Standart `chunkDelay = Duration.zero` -- testlarda haqiqiy kutish yo'q (CI sekinlashmaydi); rivojlantirishda oshirib, "jonli" oqimni simulyatsiya qilish mumkin.
+- `failWith` parametri berilsa, `chunk` chiqarmasdan darhol `failed` bilan yakunlanadi -- xatolik yo'lini (`AiResponseMapper`, `AiRequestPipeline`) sinash uchun.
+- `AiRequestPipeline` bilan integratsiyasi `test/core/ai_client/ai_request_pipeline_test.dart`da uchtan-uchga (end-to-end) testlangan: `started` -> `chunk`* -> `completed`, assemblangan context/xabar gateway so'roviga to'g'ri yetib borishi, va oflayn qisqa tutashuv (short-circuit).
+
+### Kelgusi Backend Almashtirish Strategiyasi
+
+`AiGatewayClient` interfeysi -- yagona almashtirish nuqtasi. Haqiqiy backend (Supabase Edge Function yoki alohida Dart xizmati, `ai_service/gateway/`ni ishga tushiruvchi) qurilganda:
+
+1. Yangi implementatsiya (`HttpAiGatewayClient`/`WebSocketAiGatewayClient`) `AiGatewayClient`ni amalga oshiradi -- `sendMessage()` haqiqiy HTTP/WebSocket so'rovi yuboradi, javobni `AiProtocolStreamEvent.fromJson()` orqali deserializatsiya qiladi.
+2. `core/ai_client/di/ai_client_providers.dart`dagi `aiGatewayClientProvider` FAQAT shu bitta joyda `MockAiGatewayClient()`dan yangi implementatsiyaga almashtiriladi.
+3. `AiRequestPipeline`, `AiResponseMapper`, `AiClientContextAssembler`, presentation qatlami (kelgusi chat controller/UI) -- BIRI HAM o'zgarmaydi, chunki ularning barchasi `AiGatewayClient` INTERFEYSI bilan ishlaydi, konkret implementatsiya bilan emas.
+4. `credential` parametri (`AiGatewayClient.sendMessage()`) shu bosqichda haqiqiy mazmun bilan to'ldiriladi (masalan joriy Supabase sessiyasining access token'i) -- hozircha `null`/ishlatilmagan.
+
+Bu -- `ai_service/`dagi `AIProviderAdapter` abstraktsiyasi (yangi AI provayder qo'shish = bitta yangi klass) bilan bir xil naqsh, endi klient ↔ backend transporti uchun.
+
+### Bu bosqichda YO'Q
+
+- Haqiqiy HTTP/WebSocket transporti -- `MockAiGatewayClient` hech qanday tarmoqqa chiqmaydi.
+- `AiConnectivityMonitor`ning konkret implementatsiyasi.
+- Haqiqiy autentifikatsiya ma'lumoti (`credential` doim `null`/ishlatilmagan).
+- Presentation qatlami (chat ekrani/UI) -- bu bosqich faqat PIPELINE'ni quradi, ekranni emas.
+- `AiDiagnosticsLogger`ning analitika provayderiga ulanishi (`DebugConsoleAiDiagnosticsLogger` -- faqat debug konsol, hech qachon o'zgarmasligi shart emas, lekin tashqi xizmatga ulanmaydi).
 
 ## Provider Abstraction
 
