@@ -1,6 +1,6 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4B)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C)
 
-Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi YO'Q, faqat SHAKL.
+Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang. Phase 4C — o'sha kontraktni HAQIQIY ijro zanjiriga ulaydigan **READINESS** bosqichi (rate-limit/kvota gateway darajasida yoqiladigan, kompozitsiya ildizi pluggable qilinadigan, yangi adapter chegaralari qo'shiladigan), quyidagi "Backend Implementation Readiness (Module 4, Phase 4C)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi hamon YO'Q.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -17,6 +17,8 @@ Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan A
 **Phase 4A yangilanishi (AI Integration Foundation):** Yangi `lib/core/ai_client/` -- Flutter ilovasi bilan kelgusi haqiqiy backend orasidagi INTEGRATSIYA POYDEVORI, hozircha faqat soxta (mock) javoblar bilan. `AiGatewayClient` (provayderdan mustaqil klient interfeysi), `protocol/` (backend `protocol/`ning klient tomonidagi mustaqil ko'chirmasi), `AiClientContextAssembler` (backend `ContextAssembler`ning klient hamkasbi), `AiResponseMapper` (simli modellarni domen modellariga, xatoliklarni esa ilovaning mavjud `Failure` turiga tarjima qiladi), `AiRequestPipeline` (to'liq quvur: Conversation -> Context Assembler -> AI Gateway -> Backend Protocol -> Response Mapper), `MockAiGatewayClient` (soxta oqim generatori), `AiConnectivityMonitor`/`AiDiagnosticsLogger` (interfeys, implementatsiyasiz/analitikasiz). Quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang.
 
 **Phase 4B yangilanishi (Backend Contract):** Flutter klient bilan kelgusi haqiqiy AI Service orasidagi BACKEND KONTRAKTI to'liq shaklda belgilandi -- o'nta mustaqil bo'lak: endpoint ta'riflari (`gateway/endpoint/`), so'rov/javob validatsiya shartnomalari (`gateway/validation/`), autentifikatsiya kontrakti (`protocol/ai_backend_credential.dart`), rate-limit kontrakti (`gateway/ratelimit/` + `protocol/ai_rate_limit_contract.dart`), token-hisob modeli (`domain/accounting/`), foydalanish kvotasi modeli (`domain/quota/` + `protocol/ai_usage_quota_contract.dart`), suhbat persistensiya kontrakti (`data/session/ai_conversation_persistence_contract.dart`), fayl yuklash kontrakti (`protocol/ai_attachment_upload_contract.dart`) va versiya kelishuvi kontrakti (`protocol/ai_version_negotiation_contract.dart`). Bu -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi**; quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang.
+
+**Phase 4C yangilanishi (Backend Implementation Readiness):** Phase 4B'da faqat SHAKL sifatida belgilangan `AIRateLimiter`/`AIUsageQuotaStore` kontraktlari endi `AIGatewayImpl`ning haqiqiy ijro zanjiriga ulandi (ikkalasi ham ixtiyoriy, standart holatda o'chirilgan -- mavjud xatti-harakat o'zgarmaydi). `AIServiceLocator.build()`/`buildGateway()` endi `conversationRepository`/`cancellationRegistry` uchun PLUGGABLE -- haqiqiy backend qurilganda kompozitsiya ildizining o'zi o'zgarmasdan, faqat shu parametrlar orqali real implementatsiya in'ektsiya qilinadi. Ikkita yangi adapter chegarasi qo'shildi: `AIAttachmentStorageAdapter` (`gateway/attachment/`) va `AITokenAccountingSink` (`domain/accounting/`) -- ikkalasi ham interfeys, implementatsiyasiz. Auditda topilgan bitta mudofaa (defensive) qattiqlashtirish: `AIGatewayImpl` endi `isAuthenticated == true` lekin `userId == null` holatini ham `unauthenticated` sifatida rad etadi (ilgari bu holat `AIRequestDispatcher`gacha yetib borar, keyin `unauthorized` sifatida rad etilar edi). Quyidagi "Backend Implementation Readiness (Module 4, Phase 4C)" bo'limiga qarang.
 
 ## Nega `lib/`dan tashqarida
 
@@ -575,6 +577,191 @@ Yuqoridagi barcha bo'limlarda takrorlangan naqsh: **faqat shakl, integratsiya yo
 - Hech qanday HTTP/WebSocket/gRPC kirish nuqtasi, Supabase Edge Function yoki haqiqiy AI provayder chaqiruvi.
 - `docs/DATABASE.md`ga hali HECH QANDAY yangi jadval (masalan `ai_conversations`) qo'shilmagan -- bu fayl faqat kelgusi jadval SHAKLINI oldindan belgilaydi.
 - Aniq biznes raqamlari (rate-limit chegarasi, kvota soni, fayl hajmi/MIME cheklovi, token narxi) -- barchasi `ADR-004`ga muvofiq mahsulot jamoasi bilan kelishilishi kerak bo'lgan qarorlar, shuning uchun har bir konfiguratsiya klassida yashirin standart QIYMAT yo'q.
+
+## Backend Implementation Readiness (Module 4, Phase 4C)
+
+Phase 4B backend KONTRAKTINING to'liq shaklini belgiladi, lekin aniq ta'kidladi: "Hech biri `AIGateway`/`AIGatewayImpl` ijro zanjiriga ULANMAGAN". Bu bo'lim aynan shu bo'shliqni qisman to'ldiradi -- haqiqiy AI provayder/HTTP/Edge Function HALI YO'Q (talab shunday qoladi), lekin endi kelgusi implementatorlar uchun **tayyor** (ready) bosqich: qaysi kontrakt qayerga ulanadi, qaysi joy hali ATAYLAB bo'sh qoldirilgan va nima uchun.
+
+### 1. Ko'rib chiqish (Review) natijalari
+
+Phase 4B'gacha bo'lgan zanjirni audit qilish quyidagilarni aniqladi:
+
+- `AIGatewayImpl.handle()` zanjiri (auth → dispatch → timeout → response) Phase 4B'da qo'shilgan HECH BIR kontrakt turini (`AIRequestValidator`, `AIRateLimiter`, `AIUsageQuotaStore`, `AIConversationPersistenceMapper`) chaqirmas edi -- ular mavjud, testlangan, lekin "yetim" (orphaned) turlar edi.
+- `AIRequestDispatcher` allaqachon ikkita tekshiruvni QATOR (inline) qilib bajaradi -- `auth.userId != request.userId` (soxtalashtirishga qarshi) va `context` shaklini tekshirish (`AIInvalidRequestFailure`). Bular Phase 4B'dagi `AIRequestValidator` kontraktining rasmiy shaklidan OLDIN yozilgan, formal validatorga hali ko'chirilmagan -- bu ATAYLAB shunday qoldirildi (quyidagi "4-band"ga qarang), chunki ko'chirish xulq-atvorni o'zgartirmasdan qila olmaydi (`AIRequestDispatcher`ning o'zi allaqachon test qilingan xatti-harakat).
+- `AIServiceLocator`ning ikkala kompozitsiya ildizi (`build()`/`buildGateway()`) barcha bog'liqliklarni QATTIQ (hardcoded) yaratardi -- `InMemoryConversationRepository()`/`InMemoryCancellationRegistry()` har doim ICHKI yaratilardi, tashqaridan almashtirish yo'li yo'q edi. Bu abstrakt interfeyslar (`ConversationRepository`, `AICancellationRegistry`) allaqachon almashtirishga tayyor bo'lsa-da, kompozitsiya ildizining o'zi bu imkoniyatni OCHMAGAN edi.
+- Fayl yuklash (`protocol/ai_attachment_upload_contract.dart`, Phase 4B) va token-hisob (`domain/accounting/`, Phase 4B) uchun HECH QANDAY adapter chegarasi yo'q edi -- kim/qanday haqiqiy ticket generatsiya qilishi yoki xarajat yozuvini qayerga yozishi umuman belgilanmagan edi.
+
+### 2. Readiness qatlami nima qo'shdi
+
+| Kontrakt (Phase 4B) | Avval | Endi (Phase 4C) |
+|---|---|---|
+| `AIRateLimiter` | Faqat interfeys, hech qayerda chaqirilmaydi | `AIGatewayImpl`da ixtiyoriy (`null` = o'chirilgan) pre-dispatch tekshiruvi |
+| `AIUsageQuotaStore`/`AIUsageQuotaPolicy` | Faqat interfeys/xolis funksiya | `AIGatewayImpl`da ixtiyoriy pre-dispatch tekshiruvi + muvaffaqiyatli so'rovda `recordUsage()` |
+| `ConversationRepository`/`AICancellationRegistry` | `AIServiceLocator` ichida qattiq yaratiladi | `build()`/`buildGateway()`da ixtiyoriy override parametri |
+| Fayl yuklash | Faqat simli shakl (`AIAttachmentUploadRequest`/`Ticket`) | + `AIAttachmentStorageAdapter` (`gateway/attachment/`) -- interfeys, implementatsiyasiz |
+| Token-hisob | Faqat xolis hisob-kitob (`AITokenAccountingEntry.fromRawUsage()`) | + `AITokenAccountingSink` (`domain/accounting/`) -- interfeys, implementatsiyasiz |
+
+Har bir yangi parametr **ixtiyoriy va standart holatda `null`/mavjud xatti-harakat** -- shuning uchun Phase 4B'gacha yozilgan barcha testlar o'zgarishsiz o'tadi (`test/ai_service/ai_gateway_impl_test.dart`, mavjud ikkita test hech qanday o'zgarishsiz). Yangi testlar (`ai_gateway_impl_test.dart`ga qo'shilgan rate-limit/kvota holatlari, `ai_service_locator_test.dart`) faqat YANGI, ixtiyoriy yo'lni tekshiradi.
+
+### 3. Tekshiruv (Verification)
+
+**Autentifikatsiya oqimi:** `AIGatewayImpl.handle()` ikki bosqichli: (1) `auth.isAuthenticated == false` -- darhol `unauthenticated`; (2) Phase 4C'da qattiqlashtirilgan yangi shart -- `auth.userId == null` (garchi `isAuthenticated == true` bo'lsa ham) ham endi `unauthenticated` sifatida rad etiladi, `AIRequestDispatcher`gacha yetib bormaydi. Bu -- `AIAuthenticator` implementatsiyasi (hali yo'q) "autentifikatsiya qilindi" deb da'vo qilib, `userId`ni to'ldirmasdan qoldirsa, xato ANIQ va ERTA ushlanishini kafolatlaydi (`test/ai_service/ai_gateway_impl_test.dart`, "short-circuits to unauthenticated when authenticated but userId is null").
+
+**Foydalanuvchi shaxsini uzatish (identity propagation):** ikki BOSQICHLI tasdiqlash zanjiri saqlanadi -- `AIAuthContext.userId` (autentifikatsiya qatlami tasdiqlagan) `AIRequestDispatcher`da `AIRequestEnvelope.userId` (klient da'vosi) bilan solishtiriladi (`request.userId != auth.userId` -> `AIUnauthorizedFailure`, Phase 3B'dan beri o'zgarmagan). Phase 4C bu zanjirga UCHINCHI bosqich qo'shdi: rate-limit/kvota tekshiruvlari `auth.userId`dan (klient da'vosidan EMAS) foydalanadi -- shuning uchun soxtalashtirilgan `request.userId` bilan boshqa foydalanuvchining kvotasini "yeb qo'yish" imkonsiz.
+
+**Kvota bajarilish (enforcement) nuqtalari:** ANIQ ikkita nuqta, ikkalasi ham `AIGatewayImpl.handle()`da, dispatch'dan OLDIN: (1) rate-limit (`_rateLimiter.checkAndConsume()` -- muvaffaqiyatsiz bo'lsa darhol `rateLimited` bilan qaytadi), (2) foydalanish kvotasi (`_quotaStore.getState()` → `evaluateUsageQuota()` → muvaffaqiyatli bo'lsa `recordUsage()`). Ikkalasi ham ATOMIK emas (TOCTOU nazariy imkoniyati bor -- masalan bir xil foydalanuvchidan ikkita parallel so'rov bir vaqtda `getState()`ni chaqirishi mumkin) -- bu **ataylab** hujjatlashtirilgan cheklov, chunki haqiqiy atomiklik saqlash texnologiyasiga bog'liq (masalan Postgres `SELECT ... FOR UPDATE` yoki Redis `INCR`) va bu readiness bosqichida hali tanlanmagan.
+
+**Token-hisob integratsiya nuqtalari:** HALI YO'Q, ATAYLAB. `protocol/ai_token_usage.dart` (Phase 3A)dagi `AITokenUsage`ning barcha maydonlari doim `null` -- haqiqiy provayder integratsiyasi tokenlarni hisoblab bermaguncha, `AITokenAccountingSink.record()`ni chaqiradigan HAR QANDAY kod "o'lik" (hech qachon haqiqiy ma'lumot bilan ishlamaydigan) bo'lardi. Aniqlangan (lekin qasddan qurilmagan) nuqta: `gateway/dispatch/ai_response_dispatcher.dart`dagi `AIStreamEventDone` → `AIProtocolStreamEventCompleted` tarjimasi -- shu yerda `AIResponse`dan haqiqiy token soni o'qilganda, `AITokenAccountingEntry.fromRawUsage()` chaqiriladi va natija `AITokenAccountingSink`ga yoziladi.
+
+**Suhbat persistensiya integratsiya nuqtalari:** `AIServiceLocator.build()`/`buildGateway()`dagi `conversationRepository` parametri -- YAGONA almashtirish nuqtasi (Phase 4C'da yangi qo'shildi). Haqiqiy DB-asosli implementatsiya (`ConversationRepository`ni amalga oshiruvchi, ICHKI ravishda `AIConversationPersistenceMapper`/`AIConversationRecord` (Phase 4B) orqali ishlaydigan) shu bitta parametrga in'ektsiya qilinadi -- `AIServiceLocator`ning o'zi, `AIGatewayImpl`, `AIRequestDispatcher` HECH BIRI o'zgarmaydi (Clean Architecture'ning to'g'ridan-to'g'ri natijasi -- saqlash tafsiloti allaqachon interfeys orqali izolyatsiya qilingan edi, Phase 4C faqat kompozitsiya ildizidagi qattiq bog'lanishni yechdi).
+
+**Fayl biriktirish (attachment) integratsiya nuqtalari:** ANIQLANGAN, lekin HALI ULANMAGAN. `AIAttachmentStorageAdapter` (Phase 4C, `gateway/attachment/`) -- `AIBackendEndpointId.requestAttachmentUpload` (Phase 4B) amali chaqirishi kerak bo'lgan adapter, lekin `AIGatewayImpl.handle()` HOZIRCHA faqat `sendMessage` amalini ochadi (Phase 3A'dan beri o'zgarmagan ko'lam cheklovi) -- fayl yuklash endpoint'ining o'zi hali gateway orqali ochilmagan. `AIRequestEnvelope.attachments` (Phase 3A) so'rov bilan birga keladi, lekin `AIRequestDispatcher`/`SendConversationMessageUseCase` uni HALI hech qayerga uzatmaydi (ichki `AIContext`/`AIRequest`da attachment maydoni yo'q) -- bu ANIQLANGAN, hujjatlashtirilgan bo'shliq, Phase 4C doirasida QASDDAN tuzatilmagan (buni tuzatish domain modeliga yangi maydon qo'shishni talab qiladi, bu "readiness"dan "implementation"ga o'tish bo'lardi).
+
+### 4. Backend adapter chegaralari -- to'liq inventar
+
+Loyihaning butun tarixida to'plangan **"interfeys, implementatsiyasiz"** konventsiyasiga (`AISafetyService`, Phase 1'dan beri) rioya qiluvchi barcha adapter chegaralari, bir joyda:
+
+| Chegara | Fayl | Nima uchun |
+|---|---|---|
+| `AIProviderAdapter` | `data/providers/ai_provider_adapter.dart` | Haqiqiy AI provayder (OpenAI/Gemini/Claude/Local) chaqiruvi |
+| `AISafetyService` | `safety/ai_safety_service.dart` | Xavfsizlik/xolislik tekshiruvi |
+| `AIAuthenticator` | `gateway/auth/ai_authenticator.dart` | Xom hisob ma'lumotini `AIAuthContext`ga aylantirish |
+| `AIConnectivityMonitor` | `gateway/connectivity/ai_connectivity_monitor.dart` | Tarmoq holati (klient tomonida ishlatilishi mo'ljallangan) |
+| `AITransport` | `gateway/transport/ai_transport.dart` | HTTP/WebSocket/gRPC simli transport |
+| `AIRequestValidator`/`AIResponseValidator` | `gateway/validation/` | Simli shaklning batafsil (field-level) tekshiruvi |
+| `AIRateLimiter` | `gateway/ratelimit/ai_rate_limiter.dart` | Qisqa muddatli so'rov cheklovi -- **Phase 4C'da ulandi** |
+| `AIUsageQuotaStore` | `domain/quota/ai_usage_quota.dart` | Uzoq muddatli (kunlik/oylik) biznes chegarasi -- **Phase 4C'da ulandi** |
+| `AIConversationPersistenceMapper` | `data/session/ai_conversation_persistence_contract.dart` | Domain entity ↔ durable saqlash yozuvi tarjimasi |
+| `AIAttachmentStorageAdapter` | `gateway/attachment/ai_attachment_storage_adapter.dart` | Fayl yuklash ticket/finalize (**Phase 4C'da yangi**) |
+| `AITokenAccountingSink` | `domain/accounting/ai_token_accounting_sink.dart` | Xarajat yozuvini yozib borish (**Phase 4C'da yangi**) |
+
+Ustunlar orasidan **faqat ikkitasi** (`AIRateLimiter`, `AIUsageQuotaStore`) hozircha haqiqiy ijro zanjiriga ulangan -- qolganlari hali "aniqlangan, lekin ulanmagan" chegaralar, yuqoridagi "Tekshiruv" bo'limida har biri uchun ANIQ sabab bilan izohlangan.
+
+### 5. AI backend joylashtirish (deployment) arxitekturasi
+
+`docs/adr/ADR-005-ai-vendor-fallback.md` ikkita joylashtirish variantini qoldiradi ochiq: Supabase Edge Function yoki alohida Dart xizmati. `AIGateway` (Phase 3B) mantiqiy kontrakt sifatida ikkalasiga ham mos -- transport/joylashtirishdan mustaqil.
+
+```mermaid
+flowchart LR
+    subgraph Device["Foydalanuvchi qurilmasi"]
+        App["Flutter ilova\n(lib/core/ai_client/)"]
+    end
+
+    subgraph Edge["Variant A: Supabase Edge Function"]
+        EdgeFn["Deno/TS handler\n-- AIRequestEnvelope'ni deserializatsiya qiladi"]
+    end
+
+    subgraph Standalone["Variant B: Alohida Dart xizmati"]
+        DartSvc["HTTP/WebSocket server\n(shu ai_service/ kodini ISHGA TUSHIRADI)"]
+    end
+
+    subgraph Backend["ai_service/ (bu repo, o'zgarmaydi)"]
+        Gateway["AIGateway / AIGatewayImpl"]
+        Adapters["Adapter chegaralari\n(4-band jadvali)"]
+    end
+
+    subgraph External["Tashqi xizmatlar (hali ulanmagan)"]
+        Providers["AI provayderlar"]
+        Storage["Fayl saqlash"]
+        DB["Supabase Postgres"]
+    end
+
+    App -- "HTTPS/WSS (hali implementatsiya qilinmagan)" --> EdgeFn
+    App -. "muqobil yo'l" .-> DartSvc
+    EdgeFn --> Gateway
+    DartSvc --> Gateway
+    Gateway --> Adapters
+    Adapters -."kelgusida".-> Providers
+    Adapters -."kelgusida".-> Storage
+    Adapters -."kelgusida".-> DB
+```
+
+**Muhim:** `ai_service/` kodi ikkala variantda ham BIR XIL qoladi -- farq faqat qaysi transport qatlami (`Edge Function` handler yoki Dart HTTP server) `AIGateway.handle()`ni chaqirishida. Bu ajratish `AITransport` abstraksiyasi (Phase 3B) orqali allaqachon ta'minlangan. Tanlov hali qilinmagan -- `docs/adr/ADR-005`, "Yakuniy tavsiya".
+
+### 6. So'rov hayot davri (request lifecycle) -- to'liq
+
+Phase 4B/4C'dan keyingi TO'LIQ zanjir (barcha ixtiyoriy bosqichlar YOQILGAN holatda ko'rsatilgan):
+
+```mermaid
+sequenceDiagram
+    participant C as Klient (lib/core/ai_client/)
+    participant T as AITransport (hali yo'q)
+    participant Auth as AIAuthenticator (hali yo'q)
+    participant GW as AIGatewayImpl
+    participant RL as AIRateLimiter (ixtiyoriy)
+    participant Q as AIUsageQuotaStore (ixtiyoriy)
+    participant RD as AIRequestDispatcher
+    participant UC as SendConversationMessageUseCase
+    participant Repo as AIRepositoryImpl
+    participant Safety as AISafetyService (hali yo'q)
+    participant Prov as AIProviderAdapter (hali yo'q)
+
+    C->>T: AIRequestEnvelope (JSON)
+    T->>Auth: xom credential
+    Auth-->>T: AIAuthContext
+    T->>GW: handle(request, auth)
+    GW->>GW: isAuthenticated && userId != null?
+    alt rad etildi
+        GW-->>C: failed(unauthenticated)
+    end
+    GW->>RL: checkAndConsume(userId, sendMessage)
+    alt rad etildi
+        GW-->>C: failed(rateLimited)
+    end
+    GW->>Q: getState(userId) -> evaluateUsageQuota()
+    alt rad etildi
+        GW-->>C: failed(quotaExceeded)
+    end
+    Q->>Q: recordUsage(userId)
+    GW->>RD: dispatch(request, auth)
+    RD->>RD: request.userId == auth.userId?
+    alt mos kelmadi
+        RD-->>GW: AIUnauthorizedFailure
+    end
+    RD->>UC: sendMessage(conversationId, message, context, providerId)
+    UC->>Repo: sendMessage(conversation, context, providerId)
+    Repo->>Safety: validateRequest()
+    alt xavfsiz emas
+        Repo-->>UC: AISafetyRejectionFailure
+    end
+    Repo->>Prov: streamCompletion()
+    Prov-->>Repo: AIStreamEvent (chunk*/done)
+    Repo-->>UC: Stream<AIStreamEvent>
+    UC-->>RD: Stream<AIStreamEvent>
+    RD-->>GW: Stream<AIStreamEvent>
+    GW-->>C: started, chunk*, completed (AIProtocolStreamEvent)
+```
+
+**Diagrammadagi har bir "(hali yo'q)"/"(ixtiyoriy)" belgisi ATAYLAB** -- bu Phase 4C'ning markaziy xabari: zanjirning SHAKLI to'liq, lekin haqiqiy tarmoq/provayder/tashqi xizmat chaqiruvlarining HECH BIRI hali yo'q.
+
+### 7. Xavfsizlik chegaralari (Security Boundaries)
+
+`docs/SECURITY.md` va `docs/adr/ADR-006-hybrid-infrastructure-strategy.md`ga muvofiq, uchta aniq ISHONCH CHEGARASI (trust boundary):
+
+1. **Klient ↔ Transport:** klient hech qachon ishonchli hisoblanmaydi -- `AIRequestEnvelope.userId` shunchaki DA'VO, `AIAuthenticator` orqali tasdiqlanmaguncha hech narsaga asos bo'lmaydi. HTTPS/WSS (`docs/SECURITY.md`, "JWT/token... HTTPS ustidan uzatiladi") shu chegaraning tashish (transport) darajasidagi ta'minoti.
+2. **Transport ↔ Gateway:** `AIAuthContext` -- bu chegaradan o'tgan YAGONA narsa (xom token EMAS). `AIGatewayImpl`/`AIRequestDispatcher` hech qachon xom credential/JWT imzosi haqida bilmaydi -- faqat allaqachon tekshirilgan natija bilan ishlaydi (`gateway/auth/`, "Authentication Boundary", Phase 3B).
+3. **Gateway ↔ Provider/Storage/DB:** provayder API kaliti (`docs/SECURITY.md`, "Secrets Management") FAQAT `AIServiceLocator`ga uzatiladigan `providerCredentials`da yashaydi -- `protocol/`/`gateway/`ning hech bir qismi (klientga ko'rinadigan hech narsa) bu kalitni ko'rmaydi. `AIBackendCredential.toString()` (Phase 4B) xuddi shu tamoyilni klient tomonidagi token uchun ham ta'minlaydi.
+
+**Rol asosidagi cheklov (hali yo'q):** `AIAuthContext.claims` (Phase 3B) -- rol/ruxsat kengaytmasi uchun joy ajratilgan, lekin hech kim to'ldirmaydi/o'qimaydi. Haqiqiy backend `profiles.role` (`docs/DATABASE.md`, 1-jadval)ni shu maydonga qo'yishi va `AIRequestDispatcher`/validator qatlami buni tekshirishi mo'ljallangan -- masalan `admin` bo'lmagan foydalanuvchi boshqa birovning suhbatiga kira olmasligi.
+
+### 8. Kelgusi provayder integratsiyasi (Future Provider Integration)
+
+"Provider Abstraction" bo'limida (yuqorida) tasvirlangan naqsh o'zgarmagan -- Phase 4C uni FAQAT xarajat/kvota nuqtai nazaridan kengaytiradi:
+
+1. Yangi `AIProviderAdapter` implementatsiyasi (masalan `OpenAiProviderAdapter.streamCompletion()`ning haqiqiy HTTP chaqiruvi) qo'shilganda, javob endi HAQIQIY `promptTokens`/`completionTokens` bilan qaytadi.
+2. Shu ma'lumot `AIResponse`ga (`domain/entities/ai_response.dart`) yangi maydon sifatida qo'shiladi (hozircha yo'q -- bu ham ATAYLAB Phase 4C doirasidan tashqarida, chunki domain entity o'zgarishi "readiness" emas, "implementation" bo'lardi).
+3. `gateway/dispatch/ai_response_dispatcher.dart` shu qiymatni `AITokenUsage`ga (Phase 3A placeholder) joylaydi -- endi `null` emas.
+4. Shu nuqtada (yuqoridagi "3-band, Token-hisob integratsiya nuqtalari"da aniqlangan) `AITokenAccountingSink.record()` chaqiruvi qo'shiladi -- `AIServiceLocator`ga yangi ixtiyoriy parametr sifatida, xuddi `AIRateLimiter`/`AIUsageQuotaStore` Phase 4C'da qo'shilgani kabi.
+5. `docs/adr/ADR-005`dagi fallback strategiyasi (`AIRequestDispatcher.selectProvider`) shu bosqichda birinchi marta HAQIQIY qaror qabul qiladigan bo'ladi -- hozircha chaqiruvchi tomonidan qo'lda in'ektsiya qilinadigan, standart strategiyasiz funksiya.
+
+### Bu bosqichda YO'Q
+
+- Haqiqiy HTTP/WebSocket/gRPC transport, Supabase Edge Function yoki alohida Dart xizmati -- `AIGateway.handle()` hamon faqat to'g'ridan-to'g'ri Dart chaqiruvi orqali (testlarda) ishga tushiriladi.
+- `AIRateLimiter`/`AIUsageQuotaStore`/`AIAttachmentStorageAdapter`/`AITokenAccountingSink`/`AIConversationPersistenceMapper`ning istalgan KONKRET implementatsiyasi -- barchasi hamon interfeys.
+- `AIRequestEnvelope.attachments`ning ichki `AIContext`/`AIRequest`ga uzatilishi -- fayl biriktirish hamon faqat metadata darajasida "aniqlangan bo'shliq".
+- `AIResponse`/`AITokenUsage`ga haqiqiy token sonini qo'shish -- bu haqiqiy provayder integratsiyasi bilan birga keladi.
+- Rol asosidagi ruxsatlarni (`AIAuthContext.claims`) tekshiruvchi HAR QANDAY mantiq -- maydon hamon bo'sh/o'qilmagan.
+- OpenAI/Gemini/Claude ulanishi, API kalitlari, haqiqiy AI chaqiruvi (talab: "DO NOT connect... DO NOT add API keys... DO NOT implement real AI calls").
 
 ## Bog'liq hujjatlar
 

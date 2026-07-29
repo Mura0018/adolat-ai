@@ -7,6 +7,7 @@ import '../data/repositories/ai_repository_impl.dart';
 import '../data/session/in_memory_cancellation_registry.dart';
 import '../data/session/in_memory_conversation_repository.dart';
 import '../domain/entities/ai_provider_id.dart';
+import '../domain/quota/ai_usage_quota.dart';
 import '../domain/repositories/ai_cancellation_registry.dart';
 import '../domain/repositories/ai_repository.dart';
 import '../domain/repositories/conversation_repository.dart';
@@ -18,6 +19,7 @@ import '../domain/usecases/start_conversation_usecase.dart';
 import '../gateway/ai_gateway.dart';
 import '../gateway/ai_gateway_impl.dart';
 import '../gateway/dispatch/ai_request_dispatcher.dart';
+import '../gateway/ratelimit/ai_rate_limiter.dart';
 import '../gateway/timeout/ai_timeout_policy.dart';
 import '../presentation/ai_service_handler.dart';
 import '../protocol/ai_request_envelope.dart';
@@ -44,11 +46,15 @@ class AIServiceLocator {
     required Map<AIProviderId, String> providerCredentials,
     required AISafetyService safetyService,
     AIRetryPolicy retryPolicy = const AIRetryPolicy(),
+    ConversationRepository? conversationRepository,
+    AICancellationRegistry? cancellationRegistry,
   }) {
     final bundle = _buildUseCases(
       providerCredentials: providerCredentials,
       safetyService: safetyService,
       retryPolicy: retryPolicy,
+      conversationRepository: conversationRepository,
+      cancellationRegistry: cancellationRegistry,
     );
 
     return AIServiceHandler(
@@ -75,17 +81,31 @@ class AIServiceLocator {
   /// hal qiluvchi funksiya (`AIRequestDispatcher`ga qarang) -- haqiqiy
   /// tanlov strategiyasi (`docs/adr/ADR-005`) kelgusi bosqich, shuning
   /// uchun **majburiy** parametr (yashirin standart yo'q).
+  ///
+  /// **Phase 4C yangilanishi ("Backend Implementation Readiness"):**
+  /// [rateLimiter]/[quotaStore]/[quotaPolicy] -- `AIGatewayImpl`ga
+  /// to'g'ridan-to'g'ri o'tkaziladi (ikkalasi ham ixtiyoriy, standart
+  /// holatda `null` -- tekshiruv o'chirilgan, mavjud xatti-harakat
+  /// o'zgarmaydi). Haqiqiy backend qurilganda faqat shu ikkita
+  /// parametrni chaqiruvchi tomonidan berish YETARLI.
   static AIGateway buildGateway({
     required Map<AIProviderId, String> providerCredentials,
     required AISafetyService safetyService,
     required AIProviderId Function(AIRequestEnvelope request) selectProvider,
     AIRetryPolicy retryPolicy = const AIRetryPolicy(),
     AITimeoutPolicy timeoutPolicy = const AITimeoutPolicy(),
+    ConversationRepository? conversationRepository,
+    AICancellationRegistry? cancellationRegistry,
+    AIRateLimiter? rateLimiter,
+    AIUsageQuotaStore? quotaStore,
+    AIUsageQuotaPolicy? quotaPolicy,
   }) {
     final bundle = _buildUseCases(
       providerCredentials: providerCredentials,
       safetyService: safetyService,
       retryPolicy: retryPolicy,
+      conversationRepository: conversationRepository,
+      cancellationRegistry: cancellationRegistry,
     );
 
     return AIGatewayImpl(
@@ -94,13 +114,27 @@ class AIServiceLocator {
         selectProvider: selectProvider,
       ),
       timeoutPolicy: timeoutPolicy,
+      rateLimiter: rateLimiter,
+      quotaStore: quotaStore,
+      quotaPolicy: quotaPolicy,
     );
   }
 
+  /// [conversationRepository]/[cancellationRegistry] -- Phase 4C
+  /// yangilanishi: kompozitsiya ildizini PLUGGABLE qiladi. Standart
+  /// holatda (ikkalasi ham `null`) avvalgidek `InMemory...`
+  /// implementatsiyalari yaratiladi -- xatti-harakat o'zgarmaydi.
+  /// Haqiqiy backend (masalan Postgres-asosli `ConversationRepository`)
+  /// qurilganda, `AIServiceLocator`ning o'zini o'zgartirmasdan shu
+  /// yerga in'ektsiya qilinishi mo'ljallangan (`data/session/
+  /// ai_conversation_persistence_contract.dart`, "Conversation
+  /// persistence contract" bilan bog'liq).
   static _UseCaseBundle _buildUseCases({
     required Map<AIProviderId, String> providerCredentials,
     required AISafetyService safetyService,
     required AIRetryPolicy retryPolicy,
+    ConversationRepository? conversationRepository,
+    AICancellationRegistry? cancellationRegistry,
   }) {
     final providers = <AIProviderId, AIProviderAdapter>{
       if (providerCredentials[AIProviderId.openAI] case final apiKey?)
@@ -118,21 +152,21 @@ class AIServiceLocator {
       safetyService: safetyService,
     );
 
-    final ConversationRepository conversationRepository =
-        InMemoryConversationRepository();
-    final AICancellationRegistry cancellationRegistry =
-        InMemoryCancellationRegistry();
+    final ConversationRepository resolvedConversationRepository =
+        conversationRepository ?? InMemoryConversationRepository();
+    final AICancellationRegistry resolvedCancellationRegistry =
+        cancellationRegistry ?? InMemoryCancellationRegistry();
 
     return _UseCaseBundle(
-      startConversationUseCase: StartConversationUseCase(conversationRepository),
+      startConversationUseCase: StartConversationUseCase(resolvedConversationRepository),
       sendConversationMessageUseCase: SendConversationMessageUseCase(
         repository: repository,
-        conversationRepository: conversationRepository,
-        cancellationRegistry: cancellationRegistry,
+        conversationRepository: resolvedConversationRepository,
+        cancellationRegistry: resolvedCancellationRegistry,
         retryPolicy: retryPolicy,
       ),
-      cancelConversationUseCase: CancelConversationUseCase(cancellationRegistry),
-      closeConversationUseCase: CloseConversationUseCase(conversationRepository),
+      cancelConversationUseCase: CancelConversationUseCase(resolvedCancellationRegistry),
+      closeConversationUseCase: CloseConversationUseCase(resolvedConversationRepository),
     );
   }
 }
