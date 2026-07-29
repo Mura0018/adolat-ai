@@ -1,6 +1,6 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4A)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4B)
 
-Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang.
+Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi YO'Q, faqat SHAKL.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -14,7 +14,9 @@ Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan A
 
 **Architecture Review yangilanishi (texnik qarz yopildi):** Module 4, Phase 1–3B bo'yicha to'liq arxitektura ko'rib chiqish (enterprise architecture review) o'tkazildi — hech qanday Clean Architecture/bog'liqlik yo'nalishi buzilishi topilmadi. Ikkita ANIQLANGAN (lekin hujjatlashtirilmagan) texnik qarz moddasi yopildi: (1) `ai_service/`ning Flutter/`lib/`dan mustaqilligi endi faqat kod ko'rib chiqish intizomi bilan emas, avtomatik test bilan ta'minlanadi (`test/ai_service/architecture_boundary_test.dart`, quyidagi "Nega `lib/`dan tashqarida"ga qarang); (2) `AICancellationRegistry.register()`dagi concurrency chegara holati (bir xil suhbat uchun ikkinchi so'rov birinchisining tokenini jimgina "orphan" qilib qo'yishi) tuzatildi — endi eskisi aniq bekor qilinadi (quyidagi "AI Session / Conversation Repository Contracts"dagi "Cancellation"ga qarang).
 
-**Phase 4A yangilanishi (AI Integration Foundation):** Yangi `lib/core/ai_client/` -- Flutter ilovasi bilan kelgusi haqiqiy backend orasidagi INTEGRATSIYA POYDEVORI, hozircha faqat soxta (mock) javoblar bilan. `AiGatewayClient` (provayderdan mustaqil klient interfeysi), `protocol/` (backend `protocol/`ning klient tomonidagi mustaqil ko'chirmasi), `AiClientContextAssembler` (backend `ContextAssembler`ning klient hamkasbi), `AiResponseMapper` (simli modellarni domen modellariga, xatoliklarni esa ilovaning mavjud `Failure` turiga tarjima qiladi), `AiRequestPipeline` (to'liq quvur: Conversation -> Context Assembler -> AI Gateway -> Backend Protocol -> Response Mapper), `MockAiGatewayClient` (soxta oqim generatori), `AiConnectivityMonitor`/`AiDiagnosticsLogger` (interfeys, implementatsiyasiz/analitikasiz). Quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Bu -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi**.
+**Phase 4A yangilanishi (AI Integration Foundation):** Yangi `lib/core/ai_client/` -- Flutter ilovasi bilan kelgusi haqiqiy backend orasidagi INTEGRATSIYA POYDEVORI, hozircha faqat soxta (mock) javoblar bilan. `AiGatewayClient` (provayderdan mustaqil klient interfeysi), `protocol/` (backend `protocol/`ning klient tomonidagi mustaqil ko'chirmasi), `AiClientContextAssembler` (backend `ContextAssembler`ning klient hamkasbi), `AiResponseMapper` (simli modellarni domen modellariga, xatoliklarni esa ilovaning mavjud `Failure` turiga tarjima qiladi), `AiRequestPipeline` (to'liq quvur: Conversation -> Context Assembler -> AI Gateway -> Backend Protocol -> Response Mapper), `MockAiGatewayClient` (soxta oqim generatori), `AiConnectivityMonitor`/`AiDiagnosticsLogger` (interfeys, implementatsiyasiz/analitikasiz). Quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang.
+
+**Phase 4B yangilanishi (Backend Contract):** Flutter klient bilan kelgusi haqiqiy AI Service orasidagi BACKEND KONTRAKTI to'liq shaklda belgilandi -- o'nta mustaqil bo'lak: endpoint ta'riflari (`gateway/endpoint/`), so'rov/javob validatsiya shartnomalari (`gateway/validation/`), autentifikatsiya kontrakti (`protocol/ai_backend_credential.dart`), rate-limit kontrakti (`gateway/ratelimit/` + `protocol/ai_rate_limit_contract.dart`), token-hisob modeli (`domain/accounting/`), foydalanish kvotasi modeli (`domain/quota/` + `protocol/ai_usage_quota_contract.dart`), suhbat persistensiya kontrakti (`data/session/ai_conversation_persistence_contract.dart`), fayl yuklash kontrakti (`protocol/ai_attachment_upload_contract.dart`) va versiya kelishuvi kontrakti (`protocol/ai_version_negotiation_contract.dart`). Bu -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi**; quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang.
 
 ## Nega `lib/`dan tashqarida
 
@@ -524,10 +526,62 @@ Ikkala holatda ham `ai_service/domain/`ga hech qanday o'zgarish kerak emas — b
 - Uzoq suhbatlar uchun avtomatik qisqartirish (summarization) xizmati — `ConversationRepository`ning `AIConversation.messages`ni kuzatib, chegaradan oshganda qisqartirib `MemoryContext`ga uzatishi.
 - Kelajakda foydalanuvchi/ish (case) darajasidagi uzoq muddatli xotira (masalan vektor bazasi) — bu ham faqat `MemoryContext.toPromptData()`ni to'ldiradi, `PromptPipeline`ning qolgan qismiga tegmaydi.
 
+## Backend Contract (Module 4, Phase 4B)
+
+Yuqoridagi barcha bo'limlar (Phase 1-4A) `AIRequestEnvelope`/`AIResponseEnvelope` orqali FAQAT "xabar yuborish" amalini va uning transport ostidagi ijro zanjirini (gateway) belgilagan edi. Bu bo'lim -- **haqiqiy backend qurilishidan OLDINGI SO'NGGI arxitektura bosqichi** -- backend HALI qurilmagan bo'lsa-da, kelgusi implementatsiya rioya qilishi shart bo'lgan qolgan o'nta shartnomani (kontrakt) belgilaydi. Har biri avvalgi bosqichlar bilan bir xil konventsiyaga rioya qiladi: **faqat SHAKL** (data klasslari, `abstract interface class`lar, xolis/pure funksiyalar) -- hech qanday HTTP handler, Edge Function yoki haqiqiy AI provayder chaqiruvi YO'Q.
+
+### 1. Backend endpoint ta'riflari
+
+`gateway/endpoint/ai_backend_endpoint.dart` -- `AIBackendEndpointId` (yettita mantiqiy amal: `startConversation`, `sendMessage`, `cancelConversation`, `closeConversation`, `requestAttachmentUpload`, `negotiateProtocolVersion`, `getUsageQuota`) va `AIBackendEndpointRegistry` -- har bir amal uchun TAVSIFIY metadata (`requiresAuthentication`/`isRateLimited`/`isIdempotent`). `AITransport` (Phase 3B) bilan bir xil sabab bilan HTTP yo'l/method haqida hech narsa bilmaydi -- transportdan butunlay mustaqil.
+
+### 2-3. So'rov/javob validatsiya shartnomalari
+
+`gateway/validation/ai_request_validation_contract.dart` va `ai_response_validation_contract.dart` -- `AIProtocolErrorCode.invalidRequest` (Phase 3A) ortidagi ANIQ sabablarni tur-xavfsiz ro'yxatga oladi (`AIRequestViolationCode`: `messageEmpty`, `messageTooLong`, `tooManyAttachments`, `invalidContextShape`, `unsupportedProtocolVersion`; `AIResponseViolationCode`: `inconsistentTokenUsage`, `negativeLatency`, `respondedBeforeReceived`). `AIRequestValidator`/`AIResponseValidator` -- **faqat interfeys, implementatsiyasiz** (`AISafetyService` konventsiyasi).
+
+### 4. Autentifikatsiya kontrakti
+
+`protocol/ai_backend_credential.dart` -- `AIAuthenticator.authenticate(Object? credential)` (Phase 3B) hali `Object?` deb qoldirgan xom ma'lumotning ANIQ shakli: `AIBackendCredential` (Supabase Auth JWT access token, `docs/SECURITY.md`ga muvofiq). `toString()` tokenni hech qachon to'liq chiqarmaydi (`***` bilan maskalanadi).
+
+### 5. Rate-limit kontrakti
+
+`gateway/ratelimit/ai_rate_limiter.dart` (`AIRateLimitPolicy`/`AIRateLimitDecision`/`AIRateLimiter` -- interfeys, implementatsiyasiz) + `protocol/ai_rate_limit_contract.dart` (`AIRateLimitStatus` -- klientga qaytariladigan simli holat: `limit`/`remaining`/`resetAt`). `docs/adr/ADR-004-ai-cost-governance.md`, Variant D'ning QISQA muddatli (suiiste'mol/DoS'dan himoya) qismi. Aniq son (masalan "daqiqada N ta") ATAYLAB YO'Q -- `ADR-004`ning o'zi buni "mahsulot jamoasi bilan kelishilishi kerak" deb ochiq qoldirgan.
+
+### 6. Token-hisob (accounting) modeli
+
+`domain/accounting/ai_token_accounting.dart` -- `protocol/ai_token_usage.dart` (Phase 3A, xom son, placeholder)dan bir qadam nari: `AITokenCostRate` (provayder bo'yicha narx konfiguratsiyasi) va `AITokenAccountingEntry.fromRawUsage()` (xolis xarajat hisob-kitobi). `ADR-004`, "AI -- mahsulotning eng qimmat doimiy operatsion xarajat moddasi"ning arxitektura darajasidagi ifodasi. Hech qanday haqiqiy narx bu faylda qattiq kodlanmagan.
+
+### 7. Foydalanish kvotasi (usage quota) modeli
+
+`domain/quota/ai_usage_quota.dart` (`AIUsageQuotaPolicy`/`AIUsageQuotaState`/`evaluateUsageQuota()` -- xolis baholash funksiyasi/`AIUsageQuotaStore` -- interfeys) + `protocol/ai_usage_quota_contract.dart` (`AIUsageQuotaStatus` -- klientga qaytariladigan simli holat). `ADR-004`, Variant D'ning UZOQ muddatli (kunlik/oylik biznes chegarasi) qismi -- rate-limit'dan ATAYLAB ALOHIDA tushuncha (`domain/quota/ai_usage_quota.dart`dagi qiyoslash izohiga qarang). Yangi barqaror xatolik kodi qo'shildi: `AIProtocolErrorCode.quotaExceeded` (`protocol/ai_protocol_error.dart`).
+
+### 8. Suhbat persistensiya kontrakti
+
+`data/session/ai_conversation_persistence_contract.dart` -- `InMemoryConversationRepository` (Phase 2A) faqat bitta process instance ichida ishlaydi. `AIConversationRecord`/`AIConversationMessageRecord` -- kelgusi DB-asosli `ConversationRepository` implementatsiyasi mos kelishi kerak bo'lgan DURABLE saqlash shakli, `docs/DATABASE.md` konventsiyalariga (mutually exclusive FK, egalik asosidagi RLS) muvofiq. **Muhim:** `docs/DATABASE.md`da bu shaklga mos jadval (`ai_conversations`/`ai_conversation_messages`) HALI YO'Q -- haqiqiy implementatsiya qilinganda qo'shilishi shart (`DEVELOPMENT_RULES.md`, 9-band). `AIConversationPersistenceMapper` -- domain entity <-> saqlash yozuvi tarjimasi, interfeys, implementatsiyasiz.
+
+### 9. Fayl yuklash kontrakti
+
+`protocol/ai_attachment_upload_contract.dart` -- `AIAttachmentMetadata` (Phase 3A) allaqachon YUKLANGAN faylni tasvirlaydi; bu fayl undan OLDINGI kelishuv bosqichini rasmiylashtiradi: `AIAttachmentUploadRequest` (klient so'raydi) -> `AIAttachmentUploadTicket` (backend ruxsat beradi, `uploadRef` hali mavhum/opaque) -> `finalizeAttachmentUpload()` (yuklangandan keyin yakuniy `AIAttachmentMetadata`ga birlashtiradi). `AIAttachmentUploadConstraints` (`maxSizeBytes`/`allowedMimeTypes`) -- `docs/SECURITY.md`, "Security Checklist"dagi "Fayl yuklash uchun MIME/hajm cheklovlari" talabining shakli, aniq qiymatlarsiz (hali qabul qilinmagan biznes qarori).
+
+### 10. Versiya kelishuvi kontrakti
+
+`protocol/ai_version_negotiation_contract.dart` -- `AIProtocolVersion` (Phase 3A) faqat "qaysi versiya"ni ifodalaydi, KELISHISH mexanizmini emas. `AIVersionNegotiationRequest` (klient qo'llab-quvvatlaydigan versiyalar ro'yxati) + xolis `negotiateProtocolVersion()` funksiyasi -> `AIVersionNegotiationResult` (`negotiated`+versiya yoki `unsupported`). `gateway/endpoint/`da `requiresAuthentication: false` -- bu amal login'dan OLDIN, ilova ishga tushganda bajarilishi mo'ljallangan.
+
+### Bu bosqichda YO'Q
+
+Yuqoridagi barcha bo'limlarda takrorlangan naqsh: **faqat shakl, integratsiya yo'q.**
+
+- Hech biri `AIGateway`/`AIGatewayImpl` ijro zanjiriga ULANMAGAN -- masalan `AIRateLimiter`/`AIRequestValidator` hozircha `AIRequestDispatcher` tomonidan chaqirilmaydi. Ulash usuli (qaysi bosqichda, qanday tartibda) kelgusi integratsiya bosqichida hal qilinadi.
+- `AIResponseEnvelope`/`AIProtocolStreamEvent` (Phase 3A) ATAYLAB o'zgartirilmadi -- `AIRateLimitStatus`/`AIUsageQuotaStatus` kabi yangi turlarni ularga qanday biriktirish (masalan yangi ixtiyoriy maydon sifatida) kelgusi bosqich, mavjud (bir necha joyda test qilingan) simli shaklni buzish xavfini oshirmaslik uchun.
+- Hech qanday HTTP/WebSocket/gRPC kirish nuqtasi, Supabase Edge Function yoki haqiqiy AI provayder chaqiruvi.
+- `docs/DATABASE.md`ga hali HECH QANDAY yangi jadval (masalan `ai_conversations`) qo'shilmagan -- bu fayl faqat kelgusi jadval SHAKLINI oldindan belgilaydi.
+- Aniq biznes raqamlari (rate-limit chegarasi, kvota soni, fayl hajmi/MIME cheklovi, token narxi) -- barchasi `ADR-004`ga muvofiq mahsulot jamoasi bilan kelishilishi kerak bo'lgan qarorlar, shuning uchun har bir konfiguratsiya klassida yashirin standart QIYMAT yo'q.
+
 ## Bog'liq hujjatlar
 
 - [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) — "AI Service" bo'limi (tizim darajasidagi joylashuv)
-- [`docs/adr/ADR-004-ai-cost-governance.md`](./adr/ADR-004-ai-cost-governance.md) — xarajat nazorati (bu foundation'ga hali ulanmagan, kelgusi bosqich)
+- [`docs/adr/ADR-004-ai-cost-governance.md`](./adr/ADR-004-ai-cost-governance.md) — xarajat nazorati (Phase 4B'da `domain/accounting/`, `domain/quota/`, `gateway/ratelimit/` orqali arxitektura darajasida ulandi -- aniq raqamlar hali kelishilmagan)
 - [`docs/adr/ADR-005-ai-vendor-fallback.md`](./adr/ADR-005-ai-vendor-fallback.md) — vendor-agnostik interfeys qarori (shu Module 4ning asosi)
 - [`docs/adr/ADR-006-hybrid-infrastructure-strategy.md`](./adr/ADR-006-hybrid-infrastructure-strategy.md) — sezgir ma'lumot chegarasi (`UserContext`ning nega minimal ekanligi)
+- [`docs/DATABASE.md`](./DATABASE.md) — mavjud jadval konventsiyalari (Phase 4B, "Suhbat persistensiya kontrakti" shu konventsiyalarga rioya qiladi)
+- [`docs/SECURITY.md`](./SECURITY.md) — "Rate Limiting" va "Security Checklist" bo'limlari (Phase 4B, rate-limit/fayl yuklash kontraktlari shularga asoslanadi)
 - [`ai_service/README.md`](../ai_service/README.md) — nima uchun bu kod `lib/`dan tashqarida

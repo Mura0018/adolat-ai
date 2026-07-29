@@ -1,4 +1,4 @@
-# ai_service/ — AI Service Foundation (Module 4, Phase 1)
+# ai_service/ — AI Service Foundation (Module 4, Phase 1–4B)
 
 **Bu papka Flutter mobil ilovaning (`lib/`) bir qismi EMAS.**
 
@@ -28,7 +28,11 @@ ai_service/
 │   ├── usecases/     StartConversation/SendConversationMessage/CancelConversation/CloseConversation
 │   └── prompt/       PromptPipeline, 5 ta PromptContext, ContextAssembler
 ├── protocol/         Klient ↔ backend SIMLI (wire) shartnoma — AIRequestEnvelope, AIResponseEnvelope,
-│                     AIProtocolStreamEvent, AIProtocolError (JSON serializatsiya, domain/dan mustaqil)
+│                     AIProtocolStreamEvent, AIProtocolError, va Phase 4B kontraktlari (credential,
+│                     rate-limit/kvota holati, fayl yuklash, versiya kelishuvi) — JSON serializatsiya,
+│                     domain/dan mustaqil
+├── gateway/          Protokolni ijro etiladigan zanjirga ulaydi — auth/, dispatch/, timeout/,
+│                     connectivity/, transport/ (Phase 3B) va endpoint/, validation/, ratelimit/ (Phase 4B)
 ├── data/             Provayderdan mustaqil implementatsiya (providers/, session/, repositories/)
 ├── safety/           AISafetyService — placeholder interfeys, implementatsiyasiz
 ├── presentation/      Backend kontekstidagi "kirish nuqtasi" (AIServiceHandler, yupqa/thin)
@@ -37,6 +41,6 @@ ai_service/
 
 Batafsil arxitektura: [`docs/AI_ARCHITECTURE.md`](../docs/AI_ARCHITECTURE.md).
 
-## Ko'lam (Module 4, Phase 1–3A)
+## Ko'lam (Module 4, Phase 1–4B)
 
-Faqat arxitektura va poydevor. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan.
+Faqat arxitektura, poydevor va shartnoma (kontrakt) — hech qanday haqiqiy ijro emas. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan. Phase 4B qo'shgan validatsiya/rate-limit/kvota/persistensiya kontraktlari ham xuddi shu ruhda — faqat shakl, `AIGateway` ijro zanjiriga hali ulanmagan (`docs/AI_ARCHITECTURE.md`, "Backend Contract (Module 4, Phase 4B)").

@@ -36,6 +36,14 @@ enum AIProtocolErrorCode {
   /// yo'q (masalan `AIRequestEnvelope.userId` autentifikatsiya
   /// qilingan shaxsdan farq qiladi) -- `gateway/dispatch/`.
   unauthorized,
+
+  /// Foydalanuvchining kunlik/oylik AI so'rov KVOTASI tugagan --
+  /// `rateLimited`dan ATAYLAB ALOHIDA (Module 4, Phase 4B, `domain/
+  /// quota/ai_usage_quota.dart`, "Rate limit bilan FARQI"):
+  /// `rateLimited` qisqa muddatli suiiste'mol himoyasi, `quotaExceeded`
+  /// esa uzoq muddatli (kunlik/oylik) biznes chegarasi --
+  /// `docs/adr/ADR-004-ai-cost-governance.md`, Variant D.
+  quotaExceeded,
   unknown,
 }
 
