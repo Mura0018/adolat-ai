@@ -1,3 +1,5 @@
+import '../config/runtime/ai_credential_resolver.dart';
+import '../config/runtime/ai_runtime_config.dart';
 import '../data/providers/ai_provider_adapter.dart';
 import '../data/providers/claude_provider_adapter.dart';
 import '../data/providers/gemini_provider_adapter.dart';
@@ -118,6 +120,54 @@ class AIServiceLocator {
       quotaStore: quotaStore,
       quotaPolicy: quotaPolicy,
     );
+  }
+
+  /// Admin tomonidan boshqariladigan [AIRuntimeConfig]ni `build()`/
+  /// `buildGateway()`ning `providerCredentials` parametri kutgan
+  /// shaklga aylantiradi (Module 5, Phase 5A talabi: "AI Runtime
+  /// Configuration -- Backend/Admin settings → AI Gateway → AI
+  /// Service").
+  ///
+  /// **Oqim:** chaqiruvchi (kelgusi HTTP kirish nuqtasi) avval
+  /// `AIRuntimeConfigProvider.load()` orqali [AIRuntimeConfig] oladi,
+  /// so'ng shu funksiyani chaqiradi, natijani esa `build()`/
+  /// `buildGateway()`ga `providerCredentials` sifatida uzatadi:
+  ///
+  /// ```dart
+  /// final runtimeConfig = await runtimeConfigProvider.load();
+  /// final credentials = await AIServiceLocator.resolveProviderCredentials(
+  ///   runtimeConfig: runtimeConfig,
+  ///   credentialResolver: credentialResolver,
+  /// );
+  /// final gateway = AIServiceLocator.buildGateway(
+  ///   providerCredentials: credentials,
+  ///   ...
+  /// );
+  /// ```
+  ///
+  /// **Faqat YOQILGAN (`enabled == true`) provayderlar uchun** haqiqiy
+  /// hisob ma'lumoti hal qilinadi (`AICredentialResolver.resolve()`
+  /// chaqiriladi) -- o'chirilgan provayder uchun mos yozuv `providerCredentials`da
+  /// UMUMAN bo'lmaydi, shuning uchun `_buildUseCases()`dagi mavjud
+  /// mantiq (`if (providerCredentials[id] case final apiKey?) ...`,
+  /// Module 4, Phase 1'dan beri o'zgarmagan) uni avtomatik ravishda
+  /// "sozlanmagan" deb hisoblaydi -- `AIProviderNotConfiguredFailure`
+  /// bilan bir xil yo'l, hech qanday yangi shart-band kerak emas edi.
+  ///
+  /// Bu funksiya `credentialResolver`ni O'ZI TANLAMAYDI/yaratmaydi --
+  /// chaqiruvchi tomonidan majburiy in'ektsiya qilinadi (`AISafetyService`
+  /// bilan bir xil konventsiya: haqiqiy implementatsiya hali yo'q,
+  /// shuning uchun yashirin soxta/bo'sh variant berilmaydi).
+  static Future<Map<AIProviderId, String>> resolveProviderCredentials({
+    required AIRuntimeConfig runtimeConfig,
+    required AICredentialResolver credentialResolver,
+  }) async {
+    final result = <AIProviderId, String>{};
+    for (final providerId in runtimeConfig.enabledProviderIds) {
+      final config = runtimeConfig.providerConfigs[providerId]!;
+      result[providerId] = await credentialResolver.resolve(config.credentialRef);
+    }
+    return result;
   }
 
   /// [conversationRepository]/[cancellationRegistry] -- Phase 4C

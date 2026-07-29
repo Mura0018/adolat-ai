@@ -1,6 +1,8 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A)
 
 Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang. Phase 4C — o'sha kontraktni HAQIQIY ijro zanjiriga ulaydigan **READINESS** bosqichi (rate-limit/kvota gateway darajasida yoqiladigan, kompozitsiya ildizi pluggable qilinadigan, yangi adapter chegaralari qo'shiladigan), quyidagi "Backend Implementation Readiness (Module 4, Phase 4C)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi hamon YO'Q.
+
+**Module 5, Phase 5A (AI Configuration and Control Foundation):** Module 4 butunlay "bitta so'rov qanday ishlaydi" (request pipeline) haqida edi. Module 5 boshqa savolga javob beradi: **AI provayderlarning O'ZI (qaysi yoqilgan, qaysi model, qaysi limitlar, qancha xarajat) qanday BOSHQARILADI** -- admin panel/backend konfiguratsiya qatlami orqali, Flutter ilovasi ichida HECH QACHON emas. Yangi `ai_service/config/` papkasi (`domain/`, `runtime/`, `admin/` -- pastdagi "AI Configuration and Control Foundation (Module 5, Phase 5A)" bo'limiga qarang) shu savolga javob beradi. Hech qanday OpenAI/Gemini/Claude SDK, API kalit yoki haqiqiy AI chaqiruvi qo'shilmagan -- faqat BOSHQARUV arxitekturasi.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -762,6 +764,222 @@ sequenceDiagram
 - `AIResponse`/`AITokenUsage`ga haqiqiy token sonini qo'shish -- bu haqiqiy provayder integratsiyasi bilan birga keladi.
 - Rol asosidagi ruxsatlarni (`AIAuthContext.claims`) tekshiruvchi HAR QANDAY mantiq -- maydon hamon bo'sh/o'qilmagan.
 - OpenAI/Gemini/Claude ulanishi, API kalitlari, haqiqiy AI chaqiruvi (talab: "DO NOT connect... DO NOT add API keys... DO NOT implement real AI calls").
+
+## AI Configuration and Control Foundation (Module 5, Phase 5A)
+
+**Markaziy arxitektura qoidasi (loyihaning yangi, eng qat'iy talabi):**
+*"API keys must NEVER exist inside the Flutter application. They must
+be managed through backend/admin configuration only."* Bu bo'lim shu
+qoidani amalga oshiradigan `ai_service/config/` papkasini tasvirlaydi
+-- domain modellari, dinamik yuklash zanjiri va admin boshqaruv
+kontraktlari, hech qanday UI, hech qanday haqiqiy provayder ulanishi
+yoki API kaliti bilan.
+
+### Tuzilma
+
+```
+ai_service/config/
+├── domain/    Provayderdan MUSTAQIL konfiguratsiya modellari (AIProviderConfig,
+│              AICredentialReference, AIProviderUsageLimits, AIProviderTokenLimits,
+│              AIProviderCostControlParams, AIGlobalSettings, AIUsageSummary)
+├── runtime/   Dinamik yuklash zanjiri (AIRuntimeConfig, AIRuntimeConfigProvider,
+│              AICredentialResolver -- ikkalasi ham interfeys, implementatsiyasiz)
+└── admin/     Admin boshqaruv kontraktlari (4 ta interfeys, implementatsiyasiz, UI yo'q)
+```
+
+### 1. AI Provider Configuration Contract
+
+`config/domain/ai_provider_config.dart` -- `AIProviderConfig`, bitta
+klass, `AIProviderId` (`domain/entities/ai_provider_id.dart`, Module 4,
+Phase 1: `openAI`/`gemini`/`claude`/`local`) bo'yicha farqlanadi.
+**"Provider-independent" ekanligi shu yerda:** to'rtta provayder uchun
+to'rtta alohida konfiguratsiya klassi YO'Q -- bu `AIProviderAdapter`
+(`data/providers/`, Module 4, Phase 1) "Provider Abstraction"
+naqshining konfiguratsiya darajasidagi davomi. Yangi provayder qo'shish
+= yangi klass emas, faqat yangi `AIProviderConfig` YOZUVI.
+
+**Nega bu klass domain VA simli (wire) shaklning ikkalasi ham, alohida
+`protocol/` ko'zgusiz:** Module 4, Phase 3A `protocol/`ni `domain/`dan
+ATAYLAB ajratgan edi -- sabab ISHONCHSIZ klient (masalan `providerId`ni
+o'zi tanlamasligi kerak). Admin konfiguratsiyasida bunday ishonch
+muammosi yo'q (admin panel allaqachon vakolatli), va xavfsizlik
+xususiyati (hech qachon xom kalit saqlamaslik) allaqachon
+`AICredentialReference`ning TURI orqali ta'minlangan -- qo'shimcha
+"wire mirror" faqat dublikatsiya bo'lardi (`DEVELOPMENT_RULES.md`,
+7-band, DRY). Shuning uchun `toJson()`/`fromJson()` to'g'ridan-to'g'ri
+`config/domain/`dagi klasslarning o'zida.
+
+### 2. Secure Configuration Layer
+
+`AIProviderConfig`ning har bir maydoni talabning bitta bandiga mos
+keladi:
+
+| Talab bandi | Maydon/Tur |
+|---|---|
+| provider enable/disable | `enabled: bool` |
+| active model selection | `activeModel: String` (opaque, provayderga xos nom) |
+| API credential reference | `credentialRef: AICredentialReference` |
+| usage limits | `usageLimits: AIProviderUsageLimits` (`maxRequestsPerDay`/`maxConcurrentRequests`) |
+| token limits | `tokenLimits: AIProviderTokenLimits` (`maxPromptTokens`/`maxCompletionTokens`) |
+| cost control parameters | `costControl: AIProviderCostControlParams` (`dailyBudget`/`monthlyBudget`/`alertThresholdRatio`) |
+
+**"No real secrets" qanday ta'minlangan:** `AICredentialReference`
+(`config/domain/ai_credential_reference.dart`) hech qachon xom kalit
+qiymatini SAQLAMAYDI -- faqat [storeKind] (`environmentVariable` /
+`supabaseVault` / `externalSecretsManager`) va [referenceKey] (do'kon
+ICHIDAGI nom, masalan `"OPENAI_API_KEY"`). Haqiqiy qiymatni HAL QILISH
+butunlay alohida qadam: `AICredentialResolver` (`config/runtime/
+ai_credential_resolver.dart`) -- **faqat interfeys, implementatsiyasiz**,
+`test/ai_service/ai_credential_reference_test.dart`da "never carries
+the actual secret value" testi bilan tur darajasida kafolatlangan.
+
+### 3. Admin Control Architecture
+
+To'rtta interfeys, to'rttasi ham `config/admin/`da, **faqat interfeys,
+implementatsiyasiz** (`AISafetyService` konventsiyasi, Module 4, Phase
+1'dan beri), UI YO'Q:
+
+| Interfeys | Talab bandi | Nima qiladi |
+|---|---|---|
+| `AIAdminSettingsService` | AI settings management | `AIGlobalSettings` (AI xususiyati umuman yoqilganmi, standart provayder) |
+| `AIProviderManagementService` | provider management | `AIProviderConfig`ning to'liq hayot davri (ro'yxat/o'qish/upsert/yoqish-o'chirish) |
+| `AIQuotaManagementService` | quota management | `AIUsageQuotaPolicy` (Module 4, Phase 4B)ni o'qish/yangilash + foydalanuvchi holati |
+| `AIUsageMonitoringService` | usage monitoring | `AIUsageSummary` -- agregatlangan foydalanish/xarajat ko'rsatkichi |
+
+**Muhim dizayn qarori:** `AIQuotaManagementService` YANGI kvota
+mexanizmi QURMAYDI -- Module 4, Phase 4B/4C'da qurilgan
+`AIUsageQuotaPolicy`/`AIUsageQuotaStatus`ni to'g'ridan-to'g'ri qayta
+ishlatadi. Boshqacha aytganda: Phase 4B/4C kvota MEXANIZMINI (siyosat,
+hisoblash, `AIGatewayImpl` tekshiruvi) qurdi, Phase 5A esa shu
+mexanizmni KIM BOSHQARISHI (admin) uchun kirish nuqtasini ochadi --
+ikkinchi, raqobatdosh tizim emas.
+
+### 4. AI Runtime Configuration
+
+So'ralgan oqim -- **Backend/Admin settings → AI Gateway → AI
+Service** -- endi haqiqiy, testlangan kod bilan mavjud:
+
+```mermaid
+flowchart LR
+    Admin["Admin panel\n(hali UI yo'q)"] -."AIProviderManagementService\n(config/admin/)".-> Store[("Konfiguratsiya\nsaqlanadigan joy\n(hali tanlanmagan)")]
+    Store -."AIRuntimeConfigProvider.load()\n(config/runtime/, interfeys)".-> RC["AIRuntimeConfig\n(snapshot)"]
+    RC -->|"AIServiceLocator.resolveProviderCredentials()\n(di/ai_service_locator.dart, Phase 5A)"| Creds["Map providerCredentials\n(faqat ENABLED provayderlar)"]
+    Resolver["AICredentialResolver\n(config/runtime/, interfeys)"] -."haqiqiy qiymatni hal qiladi".-> Creds
+    Creds --> BuildGW["AIServiceLocator.buildGateway()\n(Module 4, Phase 3B/4C, O'ZGARMAGAN)"]
+    BuildGW --> GW["AIGateway / AIGatewayImpl"]
+    GW --> Svc["ai_service/ qolgan qismi\n(Module 4)"]
+```
+
+`AIServiceLocator.resolveProviderCredentials({required AIRuntimeConfig
+runtimeConfig, required AICredentialResolver credentialResolver})`
+(`di/ai_service_locator.dart`, Phase 5A yangilanishi) -- yagona yangi,
+haqiqiy ijro qiluvchi kod: `AIRuntimeConfig.enabledProviderIds`
+bo'yicha aylanadi, FAQAT `enabled == true` provayderlar uchun
+`credentialResolver.resolve()` chaqiradi, natijani `build()`/
+`buildGateway()`ning MAVJUD `providerCredentials` parametriga mos
+`Map<AIProviderId, String>` sifatida qaytaradi.
+
+**Nega `build()`/`buildGateway()`ning o'zi o'ZGARMAGAN:** o'chirilgan
+provayder uchun `providerCredentials`da yozuv UMUMAN yo'q -- shuning
+uchun `_buildUseCases()`dagi MAVJUD mantiq (`if (providerCredentials[id]
+case final apiKey?) ...`, Module 4, Phase 1'dan beri o'zgarmagan) uni
+avtomatik "sozlanmagan" deb hisoblaydi, `AIProviderNotConfiguredFailure`
+bilan bir xil yo'l orqali. Hech qanday yangi shart-band, hech qanday
+yangi xatolik turi kerak bo'lmadi -- `test/ai_service/
+ai_service_locator_test.dart`, "the resolved credentials feed directly
+into buildGateway()" shu integratsiyani uchtan-uchga (end-to-end)
+tekshiradi.
+
+**Hali ULANMAGAN qismlar (ataylab):** `AIProviderConfig.activeModel`/
+`usageLimits`/`tokenLimits`/`costControl` HALI hech qanday ijro
+nuqtasiga bog'lanmagan -- `data/providers/*_adapter.dart`dagi `model`
+maydonlari hamon qattiq kodlangan standart qiymat bilan (masalan
+`OpenAiProviderAdapter(model: 'gpt-4o')`). Buni ulash adapterlarning
+HAQIQIY HTTP integratsiyasi bilan birga keladi (talab: "DO NOT connect
+real AI") -- Phase 5A faqat KELGUSI ulash nuqtasini (`AIProviderConfig`)
+tayyorlaydi, o'zi ulamaydi. Xuddi shunday, `AIGlobalSettings.aiFeatureEnabled`
+hali `AIGatewayImpl`ga yangi parametr sifatida qo'shilmagan.
+
+### API kalit xavfsizligi modeli
+
+Uch qatlamli himoya, har biri mustaqil:
+
+1. **Tur darajasida (compile-time):** `AICredentialReference`ning
+   o'zida xom kalit uchun maydon YO'Q -- xatolik qilib kalitni shu
+   klassga "qo'shib qo'yish" mumkin emas, chunki bunday maydon mavjud
+   emas.
+2. **Chegara darajasida (architectural):** `AICredentialResolver` --
+   butun `ai_service/` bo'ylab xom kalit birinchi marta PAYDO
+   BO'LADIGAN yagona nuqta (kelgusi implementatsiyada). `ai_service/`
+   hech qachon `lib/` (Flutter) tomonidan import qilinmaydi
+   (`test/ai_service/architecture_boundary_test.dart`, Module 4) --
+   shuning uchun bu nuqta STRUKTURAVIY ravishda Flutter binaridan
+   tashqarida qoladi.
+3. **Test darajasida:** `AIBackendCredential.toString()` (Module 4,
+   Phase 4B) klient tokenini maskalagani kabi, `AICredentialReference`
+   hech qachon xom qiymat saqlamasligi `test/ai_service/
+   ai_credential_reference_test.dart`da aniq tekshiriladi.
+
+`docs/SECURITY.md`, "Secrets Management"dagi umumiy tamoyil ("Service
+role kaliti faqat backendda saqlanadi, klient kodida yoki versiya
+nazoratida yo'q") shu bilan AI provayder kalitlariga ham rasman
+kengaytirildi.
+
+### Admin tomonidan boshqariladigan AI provayderlar
+
+Har bir provayder (`AIProviderId.values` -- `openAI`/`gemini`/`claude`/
+`local`) mustaqil ravishda YOQILGAN/O'CHIRILGAN, o'z modeli, o'z
+limitlari va o'z xarajat nazorati bilan boshqariladi
+(`AIProviderManagementService`). Bu -- `docs/adr/ADR-005-ai-vendor-fallback.md`ning
+"vendor-agnostik abstraktsiya" tavsiyasini ADMIN QARORI darajasida
+amalga oshiradi: qaysi provayder ishlab turgani endi kodni o'zgartirish
+(deploy) emas, balki konfiguratsiya YOZUVINI o'zgartirish masalasi
+bo'ladi -- implementatsiya qilinganda.
+
+### Provayder almashtirish (switching) strategiyasi
+
+Uch bosqichli, hammasi allaqachon mavjud mexanizmlar ustiga quriladi:
+
+1. **Admin darajasida:** `AIProviderManagementService.setEnabled()` --
+   bitta provayderni o'chirib, ikkinchisini yoqadi.
+2. **Runtime darajasida:** `AIRuntimeConfigProvider.watch()` -- ishlab
+   turgan backend jarayoni QAYTA ISHGA TUSHIRILMASDAN yangi
+   `AIRuntimeConfig`ni oladi (implementatsiya hali yo'q, faqat
+   shartnoma).
+3. **So'rov darajasida:** `AIRequestDispatcher.selectProvider`
+   (`gateway/dispatch/`, Module 4, Phase 3B) -- allaqachon chaqiruvchi
+   tomonidan in'ektsiya qilinadigan funksiya, standart strategiyasiz.
+   Kelgusida shu funksiya `AIRuntimeConfig.enabledProviderIds`/
+   `AIGlobalSettings.defaultProviderId`ga asoslanib fallback zanjirini
+   (`docs/adr/ADR-005`) amalga oshirishi mo'ljallangan -- Phase 5A bu
+   strategiyaning MA'LUMOT manbaini tayyorlaydi, o'zini yozmaydi.
+
+### Ishlab chiqarish (production) joylashtirish oqimi
+
+`docs/AI_ARCHITECTURE.md`, "Backend Implementation Readiness (Module 4,
+Phase 4C)", "5-band"dagi ikkala joylashtirish variantiga (Supabase Edge
+Function / alohida Dart xizmati) Phase 5A KONFIGURATSIYA jihatidan mos
+keladi:
+
+1. Admin panel (kelgusi, hali qurilmagan) `AIProviderManagementService`/
+   `AIAdminSettingsService` orqali konfiguratsiyani YOZADI -- qayerga
+   yozilishi (Postgres jadvali, Supabase Vault) implementatsiya
+   tafsiloti.
+2. Backend jarayoni ishga tushganda (yoki har bir so'rovda, strategiyaga
+   qarab) `AIRuntimeConfigProvider.load()` orqali O'QIYDI.
+3. `AIServiceLocator.resolveProviderCredentials()` haqiqiy kalitlarni
+   `AICredentialResolver` orqali HAL QILADI -- bu qadam FAQAT backend
+   jarayoni ICHIDA, hech qachon tarmoq orqali tashqariga chiqmaydi.
+4. Natija `AIServiceLocator.buildGateway()`ga uzatiladi -- Module 4'ning
+   qolgan qismi (gateway, usecase, provider adapter) o'zgarishsiz
+   ishlaydi.
+
+**Bu bosqichda YO'Q:** `AIRuntimeConfigProvider`/`AICredentialResolver`/
+to'rtta admin interfeysining istalgan KONKRET implementatsiyasi; admin
+panel UI (Flutter yoki boshqa); `AIProviderConfig.activeModel`/
+`usageLimits`/`tokenLimits`/`costControl`/`AIGlobalSettings.aiFeatureEnabled`ning
+haqiqiy ijro nuqtasiga ulanishi; OpenAI/Gemini/Claude SDK, API kalit
+yoki haqiqiy AI chaqiruvi (talab: "DO NOT connect real AI").
 
 ## Bog'liq hujjatlar
 

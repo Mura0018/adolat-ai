@@ -1,4 +1,4 @@
-# ai_service/ — AI Service Foundation (Module 4, Phase 1–4C)
+# ai_service/ — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A)
 
 **Bu papka Flutter mobil ilovaning (`lib/`) bir qismi EMAS.**
 
@@ -26,6 +26,8 @@ ai_service/
 │   ├── repositories/ AIRepository, ConversationRepository, AICancellationRegistry (abstrakt)
 │   ├── retry/        AIRetryPolicy, AIRetryExecutor (streaming-xavfsiz qayta urinish)
 │   ├── usecases/     StartConversation/SendConversationMessage/CancelConversation/CloseConversation
+│   ├── accounting/   Token->xarajat hisob-kitobi + AITokenAccountingSink (Phase 4B/4C)
+│   ├── quota/        Foydalanuvchi darajasidagi kunlik/oylik so'rov kvotasi (Phase 4B)
 │   └── prompt/       PromptPipeline, 5 ta PromptContext, ContextAssembler
 ├── protocol/         Klient ↔ backend SIMLI (wire) shartnoma — AIRequestEnvelope, AIResponseEnvelope,
 │                     AIProtocolStreamEvent, AIProtocolError, va Phase 4B kontraktlari (credential,
@@ -34,14 +36,19 @@ ai_service/
 ├── gateway/          Protokolni ijro etiladigan zanjirga ulaydi — auth/, dispatch/, timeout/,
 │                     connectivity/, transport/ (Phase 3B), endpoint/, validation/, ratelimit/
 │                     (Phase 4B) va attachment/ (Phase 4C)
+├── config/           AI provayder/admin KONFIGURATSIYASI (Module 5, Phase 5A) — domain/
+│                     (AIProviderConfig va h.k., provayderdan mustaqil), runtime/
+│                     (AIRuntimeConfig, AICredentialResolver -- interfeys), admin/
+│                     (4 ta boshqaruv interfeysi, UI yo'q)
 ├── data/             Provayderdan mustaqil implementatsiya (providers/, session/, repositories/)
 ├── safety/           AISafetyService — placeholder interfeys, implementatsiyasiz
 ├── presentation/      Backend kontekstidagi "kirish nuqtasi" (AIServiceHandler, yupqa/thin)
-└── di/               Kompozitsiya nuqtasi (AIServiceLocator) — Phase 4C'dan beri qisman pluggable
+└── di/               Kompozitsiya nuqtasi (AIServiceLocator) — Phase 4C'dan beri qisman pluggable,
+                       Phase 5A'dan beri runtime config -> providerCredentials ko'prigi bilan
 ```
 
 Batafsil arxitektura: [`docs/AI_ARCHITECTURE.md`](../docs/AI_ARCHITECTURE.md).
 
-## Ko'lam (Module 4, Phase 1–4C)
+## Ko'lam (Module 4, Phase 1–4C; Module 5, Phase 5A)
 
-Faqat arxitektura, poydevor va shartnoma (kontrakt) — hech qanday haqiqiy ijro emas. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan. Phase 4B qo'shgan validatsiya/rate-limit/kvota/persistensiya kontraktlari Phase 4C'da `AIGatewayImpl`/`AIServiceLocator`ga qisman ulandi (rate-limit/kvota — ixtiyoriy, standart holatda o'chirilgan; qolganlari hamon faqat shakl) — `docs/AI_ARCHITECTURE.md`, "Backend Implementation Readiness (Module 4, Phase 4C)".
+Faqat arxitektura, poydevor va shartnoma (kontrakt) — hech qanday haqiqiy ijro emas. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan. Phase 4B qo'shgan validatsiya/rate-limit/kvota/persistensiya kontraktlari Phase 4C'da `AIGatewayImpl`/`AIServiceLocator`ga qisman ulandi (rate-limit/kvota — ixtiyoriy, standart holatda o'chirilgan; qolganlari hamon faqat shakl). Module 5, Phase 5A — AI provayderlarning O'ZINI (yoqilgan/o'chirilgan, model, limitlar, xarajat) admin/backend darajasida boshqarish kontrakti — API kalitlar hech qachon Flutter ilovasida bo'lmaydi, faqat `AICredentialReference` (ishora, kalit emas) orqali `AICredentialResolver`ga (interfeys, implementatsiyasiz) uzatiladi. Qarang: `docs/AI_ARCHITECTURE.md`, "Backend Implementation Readiness (Module 4, Phase 4C)" va "AI Configuration and Control Foundation (Module 5, Phase 5A)".
