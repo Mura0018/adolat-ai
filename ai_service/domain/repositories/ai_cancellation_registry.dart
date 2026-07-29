@@ -14,8 +14,14 @@ import '../entities/ai_cancellation_token.dart';
 abstract interface class AICancellationRegistry {
   /// Suhbat uchun yangi bekor qilish tokenini ro'yxatga oladi va
   /// qaytaradi. Agar shu suhbat uchun allaqachon faol token bo'lsa, u
-  /// eskisi bilan almashtiriladi (bitta suhbatda bir vaqtning o'zida
-  /// faqat bitta faol so'rov bo'ladi degan farazga asoslanadi).
+  /// YANGI token bilan almashtirilishidan OLDIN aniq bekor qilinadi
+  /// (`AICancellationToken.cancel()`) — bitta suhbatda bir vaqtning
+  /// o'zida faqat bitta faol so'rov bo'ladi degan invariant shu orqali
+  /// KAFOLATLANADI (concurrency chegara holati: masalan bir xil suhbat
+  /// ikkita qurilmada/oynada ochilgan bo'lsa, eskisi jimgina
+  /// "orphan" -- erishib bo'lmaydigan -- holatda davom etib
+  /// QOLMAYDI). Har bir implementatsiya shu qoidaga rioya qilishi
+  /// shart (`InMemoryCancellationRegistry`ga qarang).
   AICancellationToken register(String conversationId);
 
   /// Suhbat uchun joriy faol operatsiyani bekor qiladi (agar mavjud

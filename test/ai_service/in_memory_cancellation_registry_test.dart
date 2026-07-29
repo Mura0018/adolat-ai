@@ -21,16 +21,24 @@ void main() {
       expect(() => registry.cancel('unknown'), returnsNormally);
     });
 
-    test('register replaces a previous token for the same conversation', () {
-      final registry = InMemoryCancellationRegistry();
-      final first = registry.register('c1');
-      final second = registry.register('c1');
+    test(
+      'register cancels the previous token for the same conversation before replacing it',
+      () {
+        final registry = InMemoryCancellationRegistry();
+        final first = registry.register('c1');
+        final second = registry.register('c1');
 
-      registry.cancel('c1');
+        // Concurrency edge case fix: registering a second in-flight
+        // request for the same conversation must not orphan the first
+        // token in an uncancellable, silently-still-running state.
+        expect(first.isCancelled, isTrue);
+        expect(second.isCancelled, isFalse);
 
-      expect(second.isCancelled, isTrue);
-      expect(first.isCancelled, isFalse); // no longer tracked, not touched
-    });
+        registry.cancel('c1');
+
+        expect(second.isCancelled, isTrue);
+      },
+    );
 
     test('release removes the token without cancelling it', () {
       final registry = InMemoryCancellationRegistry();

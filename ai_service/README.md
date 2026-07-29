@@ -11,6 +11,8 @@ Shu sababli bu kod:
 - provayder API kalitlarini (OpenAI/Gemini/Claude) hech qachon o'zida saqlamaydi yoki mobil ilova binariga joylashtirmaydi;
 - kelgusida **backend/serverless muhitda** (Supabase Edge Function yoki alohida Dart xizmati) joylashtirilishi mo'ljallangan.
 
+**Avtomatik tekshiruv:** `test/ai_service/architecture_boundary_test.dart` `ai_service/`ning har bir faylini skanerlab, `package:flutter`/`dart:ui`/`lib/`/`package:adolat_ai` importlaridan birortasi topilsa testni muvaffaqiyatsiz qiladi — bu chegara endi faqat kod ko'rib chiqishga emas, `flutter test`ning o'ziga tayanadi.
+
 ## Nega shu repozitoriyada
 
 `flutter analyze`/`flutter test` (loyihaning yagona sifat darvozasi — `.github/workflows/ci.yml`) shu papkani ham avtomatik tekshiradi, chunki u bir xil `pubspec.yaml` konteksti ostida yotadi. Bu — kod hali qayerda ishga tushishi (Edge Function/alohida xizmat) aniq belgilanmagan bosqichda ham, sifat nazoratini birinchi kundan boshlab ta'minlash uchun ataylab qilingan tanlov.
