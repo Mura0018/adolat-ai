@@ -47,8 +47,35 @@ class SyncBackoffPolicy {
     return Duration(microseconds: delayMicroseconds);
   }
 
-  /// Yana urinish mumkinmi.
+  /// Yana urinish mumkinmi (urinishlar SONI bo'yicha).
   bool shouldRetry(int attemptCount) => attemptCount < maxAttempts;
+
+  /// Amal QACHON qayta urinishga tayyor bo'ladi (Module 6B).
+  ///
+  /// **Nega 6B'da qo'shildi:** Phase 6A backoff oralig'ini
+  /// HISOBLARDI, lekin uni hech kim KUTMASDI — muvaffaqiyatsiz amal
+  /// keyingi siklda darhol qayta urinilardi. Natijada "ortib boruvchi
+  /// kutish oralig'i" (`docs/ARCHITECTURE.md`, "Sync Engine") amalda
+  /// ishlamasdi va uzilgan tarmoqda server keraksiz yuk olardi.
+  ///
+  /// [attemptCount] — allaqachon qilingan urinishlar soni.
+  /// [lastAttemptAt] `null` bo'lsa (hali urinilmagan) — amal darhol
+  /// tayyor.
+  DateTime? nextRetryAt({required int attemptCount, DateTime? lastAttemptAt}) {
+    if (lastAttemptAt == null || attemptCount <= 0) return null;
+    return lastAttemptAt.add(delayFor(attemptCount - 1));
+  }
+
+  /// Amal shu daqiqada qayta urinishga tayyormi.
+  bool isReadyForRetry({
+    required int attemptCount,
+    required DateTime? lastAttemptAt,
+    required DateTime now,
+  }) {
+    final due = nextRetryAt(attemptCount: attemptCount, lastAttemptAt: lastAttemptAt);
+    if (due == null) return true;
+    return !now.isBefore(due);
+  }
 
   /// Chegaraga yetgan amal uchun foydalanuvchiga ko'rsatiladigan
   /// sabab (xom texnik matn emas).

@@ -60,6 +60,54 @@ void main() {
     });
   });
 
+  group('qayta urinish vaqti (Module 6B)', () {
+    const policy = SyncBackoffPolicy(initialDelay: Duration(seconds: 10));
+    final lastAttempt = DateTime.utc(2026, 1, 2, 12);
+
+    test('hali urinilmagan amal darhol tayyor', () {
+      expect(
+        policy.isReadyForRetry(attemptCount: 0, lastAttemptAt: null, now: lastAttempt),
+        isTrue,
+      );
+    });
+
+    test('kutish oralig\'i o\'tmaguncha tayyor emas', () {
+      expect(
+        policy.isReadyForRetry(
+          attemptCount: 1,
+          lastAttemptAt: lastAttempt,
+          now: lastAttempt.add(const Duration(seconds: 9)),
+        ),
+        isFalse,
+      );
+    });
+
+    test('kutish oralig\'i o\'tgach tayyor bo\'ladi', () {
+      expect(
+        policy.isReadyForRetry(
+          attemptCount: 1,
+          lastAttemptAt: lastAttempt,
+          now: lastAttempt.add(const Duration(seconds: 10)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('urinishlar ortgan sari kutish uzayadi', () {
+      final afterFirst = policy.nextRetryAt(attemptCount: 1, lastAttemptAt: lastAttempt)!;
+      final afterSecond = policy.nextRetryAt(attemptCount: 2, lastAttemptAt: lastAttempt)!;
+      final afterThird = policy.nextRetryAt(attemptCount: 3, lastAttemptAt: lastAttempt)!;
+
+      expect(afterFirst, lastAttempt.add(const Duration(seconds: 10)));
+      expect(afterSecond, lastAttempt.add(const Duration(seconds: 20)));
+      expect(afterThird, lastAttempt.add(const Duration(seconds: 40)));
+    });
+
+    test('lastAttemptAt yo\'q bo\'lsa muddat ham yo\'q', () {
+      expect(policy.nextRetryAt(attemptCount: 3, lastAttemptAt: null), isNull);
+    });
+  });
+
   group('xolislik (pure)', () {
     test('bir xil kirish har doim bir xil natija', () {
       const policy = SyncBackoffPolicy();

@@ -33,6 +33,7 @@ class SyncReport {
     required this.transientFailures,
     required this.needsAttention,
     this.skippedOffline = false,
+    this.interruptedByOffline = false,
   });
 
   /// Tarmoq yo'qligi sababli umuman ishlamagan sikl.
@@ -41,7 +42,8 @@ class SyncReport {
       succeeded = 0,
       transientFailures = 0,
       needsAttention = 0,
-      skippedOffline = true;
+      skippedOffline = true,
+      interruptedByOffline = false;
 
   final SyncTrigger trigger;
   final int processed;
@@ -55,13 +57,20 @@ class SyncReport {
 
   final bool skippedOffline;
 
+  /// Sikl BOSHLANDI, lekin o'rtasida tarmoq uzilib to'xtatildi
+  /// (Module 6B). Qolgan amallar navbatda saqlanadi.
+  ///
+  /// [skippedOffline]dan farqi: u sikl umuman boshlanmaganini
+  /// bildiradi.
+  final bool interruptedByOffline;
+
   bool get hasFailures => transientFailures > 0 || needsAttention > 0;
 
   @override
   String toString() =>
       'SyncReport(trigger: ${trigger.name}, processed: $processed, succeeded: $succeeded, '
       'transient: $transientFailures, needsAttention: $needsAttention, '
-      'skippedOffline: $skippedOffline)';
+      'skippedOffline: $skippedOffline, interruptedByOffline: $interruptedByOffline)';
 }
 
 /// BITTA navbatdagi amalni haqiqatan bajaruvchi chegara.

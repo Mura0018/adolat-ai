@@ -1,4 +1,4 @@
-# core/offline/ — Offline-First poydevori (Module 6, Phase 6A)
+# core/offline/ — Offline-First poydevori (Module 6, Phase 6A–6B)
 
 `docs/ARCHITECTURE.md`ning **"Offline-First Architecture"**, **"Local Storage"**, **"Sync Engine"** va **"Conflict Resolution"** bo'limlarining kod darajasidagi ifodasi.
 
@@ -20,13 +20,26 @@ Har bir shartnoma yo implementatsiyasiz interfeys, yo xotiradagi (in-memory) poy
 core/offline/
 ├── storage/       LocalStore<T>/LocalStorage (interfeys) + InMemory implementatsiyasi
 ├── queue/         PendingOperation (model) + OfflineQueue (interfeys) + InMemory navbat
+├── network/       NetworkStatus/NetworkStatusChange, NetworkStateMonitor (interfeys)
+│                  + InMemory (boshqariladigan) implementatsiya            [6B]
 ├── sync/          SyncState, SyncOperationOutcome, SyncOperationHandler,
 │                  SyncEngine (interfeys), SyncBackoffPolicy (xolis qoida),
-│                  QueuedSyncEngine (orkestratsiya, I/O YO'Q)
+│                  QueuedSyncEngine (orkestratsiya, I/O YO'Q),
+│                  SyncScheduler (qachon ishga tushirish)                  [6B]
 ├── conflict/      SyncConflict, ConflictResolution (sealed),
 │                  ConflictResolutionStrategy + Default implementatsiyasi
 └── repositories/  LocalDataSource<T>, OfflineCapableRepository, RecordSyncStatus
 ```
+
+## Vazifalar taqsimoti
+
+| Komponent | Javob beradigan savol |
+|---|---|
+| `NetworkStateMonitor` | Tarmoq bormi? (**sezuv organi** — saqlamaydi, sinxronlamaydi) |
+| `SyncScheduler` | **Qachon** sinxronlash kerak? |
+| `SyncEngine` | Bitta siklni **qanday** bajarish kerak? |
+| `SyncOperationHandler` | Bitta amalni serverga **qanday** yuborish kerak? (yagona tarmoq nuqtasi) |
+| `ConflictResolutionStrategy` | Server bilan mos kelmaganda **nima qilish** kerak? |
 
 ## Asosiy almashtirish nuqtalari
 
@@ -34,7 +47,7 @@ core/offline/
 |---|---|---|
 | `LocalStore` | `InMemoryLocalStore` | Doimiy saqlash (paket ADR bilan tanlanadi) |
 | `SyncOperationHandler` | Yo'q (testda fake) | Supabase orqali haqiqiy yuborish |
-| `isOnline` (`QueuedSyncEngine`) | `() => true` | Network State Handling (6B) |
+| `NetworkStateMonitor` | `InMemoryNetworkStateMonitor` (qo'lda boshqariladi) | Platforma signali (paket ADR bilan tanlanadi) |
 | `ConflictResolutionStrategy` | `DefaultConflictResolutionStrategy` | Feature'ga xos qoida kerak bo'lsa |
 
 **Muhim:** butun offline yadrosi "serverga qanday murojaat qilinadi" bilimini FAQAT `SyncOperationHandler` ortida saqlaydi — shuning uchun 6A'da tarmoq kodi umuman yozilmagan holda ham navbat, tartib, qayta urinish va ziddiyat qoidalari to'liq qurilgan va sinalgan.

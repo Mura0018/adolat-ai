@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../conflict/conflict_resolution.dart';
 import '../conflict/conflict_resolution_strategy.dart';
+import '../network/network_state_monitor.dart';
 import '../queue/offline_queue.dart';
 import '../queue/pending_operation.dart';
 import 'sync_backoff_policy.dart';
@@ -34,6 +35,7 @@ class QueuedSyncEngine implements SyncEngine {
     required List<SyncOperationHandler> handlers,
     ConflictResolutionStrategy conflictStrategy = const DefaultConflictResolutionStrategy(),
     SyncBackoffPolicy backoffPolicy = const SyncBackoffPolicy(),
+    NetworkStateMonitor? networkMonitor,
     Future<bool> Function()? isOnline,
     DateTime Function()? clock,
     int batchLimit = 20,
@@ -41,7 +43,8 @@ class QueuedSyncEngine implements SyncEngine {
        _handlers = handlers,
        _conflictStrategy = conflictStrategy,
        _backoffPolicy = backoffPolicy,
-       _isOnline = isOnline ?? _alwaysOnline,
+       _networkMonitor = networkMonitor,
+       _isOnline = isOnline,
        _clock = clock ?? DateTime.now,
        _batchLimit = batchLimit;
 
@@ -52,18 +55,28 @@ class QueuedSyncEngine implements SyncEngine {
   final DateTime Function() _clock;
   final int _batchLimit;
 
-  /// Tarmoq holatini tekshiruvchi funksiya.
+  /// Tarmoq holati manbai (Module 6B) — asosiy yo'l.
   ///
-  /// **Nega interfeys emas, oddiy funksiya va nega standart qiymati
-  /// "har doim onlayn":** haqiqiy tarmoq kuzatuvi
-  /// (`docs/ARCHITECTURE.md`, "Network State Handling") — keyingi
-  /// bosqich ishi va u platforma paketiga muhtoj (6A'da yangi
-  /// bog'liqlik qo'shilmaydi). Shu ilmoq oldindan qoldirilgani uchun
-  /// `SyncPausedOffline` holati hozircha ham to'liq modellashtirilgan
-  /// va sinaladigan.
-  final Future<bool> Function() _isOnline;
+  /// Phase 6A'da bu yerda faqat `Future<bool> Function()` ilmog'i bor
+  /// edi; 6B uni to'liq `NetworkStateMonitor` shartnomasi bilan
+  /// almashtiradi. [_isOnline] hamon qo'llab-quvvatlanadi (testlarda
+  /// va monitor kerak bo'lmagan oddiy holatlarda qulay), lekin
+  /// monitor berilgan bo'lsa u ustuvor.
+  final NetworkStateMonitor? _networkMonitor;
 
-  static Future<bool> _alwaysOnline() async => true;
+  final Future<bool> Function()? _isOnline;
+
+  /// Ikkalasi ham berilmasa — "har doim onlayn" deb qaraladi
+  /// (masalan sof mantiqiy testlarda).
+  Future<bool> _checkOnline() async {
+    final monitor = _networkMonitor;
+    if (monitor != null) {
+      return (await monitor.refresh()).isOnline;
+    }
+    final isOnline = _isOnline;
+    if (isOnline != null) return isOnline();
+    return true;
+  }
 
   final StreamController<SyncState> _stateController = StreamController<SyncState>.broadcast();
 
@@ -102,12 +115,19 @@ class QueuedSyncEngine implements SyncEngine {
 
     _isRunning = true;
     try {
-      if (!await _isOnline()) {
+      if (!await _checkOnline()) {
         _emit(SyncPausedOffline(pendingCount: await _queue.pendingCount()));
         return SyncReport.skippedOffline(trigger);
       }
 
-      final batch = await _queue.nextBatch(limit: _batchLimit);
+      // Oldingi sikl uzilib qolgan bo'lsa (ilova o'chib qolgan,
+      // jarayon to'xtatilgan) -- `inProgress`da osilib qolgan amallar
+      // tiklanadi. Bir vaqtda faqat bitta sikl ishlagani uchun, sikl
+      // BOSHIDA `inProgress`da turgan har qanday amal aynan shunday
+      // uzilishning izidir.
+      await _recoverStalledOperations();
+
+      final batch = await _eligibleBatch();
       if (batch.isEmpty) {
         _emit(SyncIdle(pendingCount: await _queue.pendingCount()));
         return SyncReport(
@@ -125,6 +145,24 @@ class QueuedSyncEngine implements SyncEngine {
       var processed = 0;
 
       for (final operation in batch) {
+        // Sikl O'RTASIDA tarmoq uzilishi (`docs/ARCHITECTURE.md`,
+        // "Network State Handling" -> *"onlayndan oflaynga o'tganda,
+        // joriy bajarilayotgan so'rovlar xavfsiz tarzda navbatga
+        // qaytariladi"*). Amal `inProgress` deb belgilanishidan OLDIN
+        // tekshiriladi, shuning uchun qolgan amallar `pending` holida
+        // navbatda saqlanadi -- hech narsa yo'qolmaydi.
+        if (!await _checkOnline()) {
+          _emit(SyncPausedOffline(pendingCount: await _queue.pendingCount()));
+          return SyncReport(
+            trigger: trigger,
+            processed: processed,
+            succeeded: succeeded,
+            transientFailures: transientFailures,
+            needsAttention: needsAttention,
+            interruptedByOffline: true,
+          );
+        }
+
         _emit(SyncInProgress(processed: processed, total: batch.length));
 
         final resolved = await _processOne(operation);
@@ -229,6 +267,51 @@ class QueuedSyncEngine implements SyncEngine {
       KeepServerState(:final reason) => operation.markNeedsAttention(reason),
       EscalateToUser(:final reason) => operation.markNeedsAttention(reason),
     };
+  }
+
+  /// Uzilib qolgan (`inProgress`da osilib qolgan) amallarni qayta
+  /// urinishga yaroqli holatga qaytaradi.
+  ///
+  /// Bularsiz amal MANGU `inProgress`da qolib ketardi: bu holat
+  /// `isSyncable` emas, ya'ni amal boshqa hech qachon olinmasdi va
+  /// foydalanuvchi uchun "jimgina yo'qolgan"ga aylanardi — 6A
+  /// navbatining eng nozik bo'shlig'i.
+  ///
+  /// Idempotentlik kaliti (`PendingOperation.id`) o'zgarmagani uchun
+  /// qayta yuborish serverda takroriy yozuv hosil qilmaydi
+  /// (`docs/ARCHITECTURE.md`, "Network State Handling" → *"So'rov
+  /// davomida uzilish"*).
+  Future<void> _recoverStalledOperations() async {
+    final stalled = await _queue.getByStatus(PendingOperationStatus.inProgress);
+
+    for (final operation in stalled) {
+      await _queue.update(
+        operation.markFailed(
+          'Oldingi sinxronizatsiya yakunlanmay uzilib qolgan — qayta uriniladi.',
+        ),
+      );
+    }
+  }
+
+  /// Navbatdan FAQAT shu daqiqada urinishga TAYYOR amallarni oladi.
+  ///
+  /// Backoff kutish oralig'i shu yerda haqiqatan hurmat qilinadi
+  /// (Module 6B) — 6A'da oraliq hisoblanardi, lekin kutilmasdi.
+  /// Navbatning FIFO tartibi saqlanadi: tayyor bo'lmagan amal
+  /// o'tkazib yuboriladi, lekin o'z o'rnini yo'qotmaydi.
+  Future<List<PendingOperation>> _eligibleBatch() async {
+    final batch = await _queue.nextBatch(limit: _batchLimit);
+    final now = _clock();
+
+    return batch
+        .where(
+          (operation) => _backoffPolicy.isReadyForRetry(
+            attemptCount: operation.attemptCount,
+            lastAttemptAt: operation.lastAttemptAt,
+            now: now,
+          ),
+        )
+        .toList(growable: false);
   }
 
   SyncOperationHandler? _handlerFor(PendingOperation operation) {

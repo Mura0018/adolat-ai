@@ -1,4 +1,6 @@
 import 'package:adolat_ai/core/offline/conflict/sync_conflict.dart';
+import 'package:adolat_ai/core/offline/network/in_memory_network_state_monitor.dart';
+import 'package:adolat_ai/core/offline/network/network_status.dart';
 import 'package:adolat_ai/core/offline/queue/in_memory_offline_queue.dart';
 import 'package:adolat_ai/core/offline/queue/pending_operation.dart';
 import 'package:adolat_ai/core/offline/sync/queued_sync_engine.dart';
@@ -55,7 +57,17 @@ PendingOperation _operation({required String id, String? dependsOn}) {
 void main() {
   late InMemoryOfflineQueue queue;
 
-  setUp(() => queue = InMemoryOfflineQueue());
+  /// Boshqariladigan soat — Module 6B'dan beri dvigatel backoff
+  /// kutish oralig'ini HAQIQATAN hurmat qiladi, shuning uchun qayta
+  /// urinishni sinash uchun vaqtni oldinga surish kerak.
+  late DateTime now;
+
+  setUp(() {
+    queue = InMemoryOfflineQueue();
+    now = DateTime.utc(2026, 1, 2);
+  });
+
+  void advance(Duration duration) => now = now.add(duration);
 
   QueuedSyncEngine engineWith(
     List<SyncOperationHandler> handlers, {
@@ -67,7 +79,7 @@ void main() {
       handlers: handlers,
       isOnline: isOnline,
       backoffPolicy: backoff,
-      clock: () => DateTime.utc(2026, 1, 2),
+      clock: () => now,
     );
   }
 
@@ -113,13 +125,14 @@ void main() {
       expect(report.transientFailures, 1);
     });
 
-    test('keyingi siklda qayta uriniladi', () async {
+    test('backoff kutish oralig\'i o\'tgach qayta uriniladi', () async {
       await queue.enqueue(_operation(id: 'op-1'));
       final handler = _FakeHandler(outcome: const SyncTransientFailure('uzildi'));
       final engine = engineWith([handler]);
 
       await engine.sync(trigger: SyncTrigger.appStart);
       handler.outcome = const SyncSuccess();
+      advance(const Duration(seconds: 10)); // backoff oralig'i o'tdi
       await engine.sync(trigger: SyncTrigger.connectivityRestored);
 
       expect(handler.performedOperationIds, ['op-1', 'op-1']);
@@ -135,7 +148,9 @@ void main() {
       );
 
       await engine.sync(trigger: SyncTrigger.appStart);
+      advance(const Duration(minutes: 1));
       await engine.sync(trigger: SyncTrigger.appStart);
+      advance(const Duration(minutes: 1));
       await engine.sync(trigger: SyncTrigger.appStart);
 
       final stored = (await queue.getById('op-1'))!;
@@ -278,6 +293,159 @@ void main() {
 
       expect(states.any((s) => s is SyncInProgress), isTrue);
       expect(states.last, isA<SyncCompleted>());
+    });
+  });
+
+  group('backoff kutish oralig\'i hurmat qilinadi (Module 6B)', () {
+    test('kutish oralig\'i o\'tmaguncha amal qayta olinmaydi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final handler = _FakeHandler(outcome: const SyncTransientFailure('uzildi'));
+      final engine = engineWith([handler]);
+
+      await engine.sync(trigger: SyncTrigger.appStart);
+      // Vaqt surilmadi -- backoff oralig'i hali o'tmagan.
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(handler.performedOperationIds, ['op-1']);
+    });
+
+    test('kutish oralig\'i har urinishda ortadi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final handler = _FakeHandler(outcome: const SyncTransientFailure('uzildi'));
+      final engine = engineWith([handler]);
+
+      await engine.sync(trigger: SyncTrigger.appStart); // 1-urinish
+      advance(const Duration(seconds: 5));
+      await engine.sync(trigger: SyncTrigger.appStart); // 2-urinish (5s dan keyin)
+      advance(const Duration(seconds: 5));
+      // Endi 10s kerak -- 5s yetmaydi.
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(handler.performedOperationIds, hasLength(2));
+    });
+
+    test('tayyor bo\'lmagan amal navbatdagi o\'rnini yo\'qotmaydi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      await queue.enqueue(_operation(id: 'op-2'));
+      final handler = _FakeHandler(outcome: const SyncTransientFailure('uzildi'));
+      final engine = engineWith([handler]);
+
+      await engine.sync(trigger: SyncTrigger.appStart);
+      handler.outcome = const SyncSuccess();
+      advance(const Duration(minutes: 1));
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      // FIFO saqlanadi: op-1 baribir op-2 dan oldin.
+      expect(handler.performedOperationIds, ['op-1', 'op-2', 'op-1', 'op-2']);
+    });
+  });
+
+  group('sikl o\'rtasida tarmoq uzilishi (Module 6B)', () {
+    test('qolgan amallar yuborilmaydi va navbatda saqlanadi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      await queue.enqueue(_operation(id: 'op-2'));
+
+      final handler = _FakeHandler();
+      final engine = QueuedSyncEngine(
+        queue: queue,
+        handlers: [handler],
+        clock: () => now,
+        // Tarmoq BIRINCHI amaldan keyin uziladi.
+        isOnline: () async => handler.performedOperationIds.isEmpty,
+      );
+
+      final report = await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(report.interruptedByOffline, isTrue);
+      expect(handler.performedOperationIds, ['op-1']);
+      // op-2 hech qachon boshlanmagani uchun pending holida qoladi.
+      expect((await queue.getById('op-2'))!.status, PendingOperationStatus.pending);
+    });
+
+    test('uzilgan sikl SyncPausedOffline holatini beradi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      await queue.enqueue(_operation(id: 'op-2'));
+
+      final handler = _FakeHandler();
+      final engine = QueuedSyncEngine(
+        queue: queue,
+        handlers: [handler],
+        clock: () => now,
+        isOnline: () async => handler.performedOperationIds.isEmpty,
+      );
+
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(engine.currentState, isA<SyncPausedOffline>());
+    });
+  });
+
+  group('uzilib qolgan amallarni tiklash (Module 6B)', () {
+    test('inProgress da osilib qolgan amal qayta urinishga qaytariladi', () async {
+      // Ilova sinxronizatsiya o'rtasida o'chib qolgan holatni
+      // taqlid qiladi.
+      await queue.enqueue(_operation(id: 'op-1'));
+      await queue.update(
+        (await queue.getById('op-1'))!.markInProgress(at: DateTime.utc(2026)),
+      );
+      expect((await queue.getById('op-1'))!.isSyncable, isFalse);
+
+      final handler = _FakeHandler();
+      advance(const Duration(hours: 1));
+      await engineWith([handler]).sync(trigger: SyncTrigger.appStart);
+
+      // Bularsiz amal MANGU inProgress da qolib ketardi.
+      expect(handler.performedOperationIds, ['op-1']);
+      expect((await queue.getById('op-1'))!.status, PendingOperationStatus.completed);
+    });
+
+    test('tiklangan amalning idempotentlik kaliti o\'zgarmaydi', () async {
+      await queue.enqueue(_operation(id: 'stable-key'));
+      await queue.update(
+        (await queue.getById('stable-key'))!.markInProgress(at: DateTime.utc(2026)),
+      );
+
+      advance(const Duration(hours: 1));
+      await engineWith([_FakeHandler()]).sync(trigger: SyncTrigger.appStart);
+
+      expect((await queue.getById('stable-key'))!.id, 'stable-key');
+    });
+  });
+
+  group('NetworkStateMonitor bilan ishlash (Module 6B)', () {
+    test('monitor oflayn bo\'lsa sikl boshlanmaydi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final monitor = InMemoryNetworkStateMonitor(initialStatus: NetworkStatus.offline);
+      final handler = _FakeHandler();
+      final engine = QueuedSyncEngine(
+        queue: queue,
+        handlers: [handler],
+        networkMonitor: monitor,
+        clock: () => now,
+      );
+
+      final report = await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(report.skippedOffline, isTrue);
+      expect(handler.performedOperationIds, isEmpty);
+      await monitor.dispose();
+    });
+
+    test('monitor onlayn bo\'lsa sikl normal ishlaydi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final monitor = InMemoryNetworkStateMonitor();
+      final handler = _FakeHandler();
+      final engine = QueuedSyncEngine(
+        queue: queue,
+        handlers: [handler],
+        networkMonitor: monitor,
+        clock: () => now,
+      );
+
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(handler.performedOperationIds, ['op-1']);
+      await monitor.dispose();
     });
   });
 

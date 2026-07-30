@@ -195,7 +195,7 @@ Bu tamoyil quyidagi aniq talablar orqali amalga oshiriladi:
 
 Ushbu talabning texnik amalga oshirilishi uchta bir-biriga bog'liq quyi komponentga bo'linadi — **Local Storage** (ma'lumot qayerda va qanday saqlanadi), **Sync Engine** (mahalliy va server holati qanday muvofiqlashtiriladi) va **Network State Handling** (tarmoq holati qanday aniqlanadi va ilova xatti-harakatiga ta'sir qiladi) — bular navbatdagi bo'limlarda batafsil yoritiladi.
 
-### Amalga oshirish holati (Module 6, Phase 6A — 2026-07-30)
+### Amalga oshirish holati (Module 6, Phase 6A–6B — 2026-07-30)
 
 Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** `lib/core/offline/`da qurildi (batafsil: [`lib/core/offline/README.md`](../lib/core/offline/README.md)). Bu — **faqat arxitektura va interfeyslar**: hech qanday HTTP/WebSocket, Supabase SDK, backend/Edge Function kodi, API kalit yoki UI o'zgarishi qo'shilmagan, yangi paket bog'liqligi ham olinmagan.
 
@@ -204,7 +204,15 @@ Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** 
 | Local Storage | `LocalStore<T>`/`LocalStorage` shartnomasi + xotiradagi implementatsiya; `LocalDataSource<T>` va `RecordSyncStatus` | **Doimiylik (persistence)** — saqlash paketi (Drift/Isar/Hive/sqflite) tanlanmagan, ADR talab qilinadi |
 | Sync Engine | `SyncEngine`/`SyncOperationHandler` shartnomalari, `PendingOperation`/`OfflineQueue` (FIFO + bog'liqlik tartibi + idempotentlik kaliti), `SyncBackoffPolicy`, `QueuedSyncEngine` (I/O'siz orkestratsiya) | Haqiqiy yuborish (`SyncOperationHandler` implementatsiyasi), fon rejimi jadvali |
 | Conflict Resolution | `SyncConflict`, `ConflictResolution` (sealed), `DefaultConflictResolutionStrategy` — shu bo'limdagi to'rtala qoidaning xolis ifodasi | Ziddiyatni ANIQLASH (server javobini taqqoslash) va audit izini yozish |
-| Network State Handling | Faqat ilmoq: `QueuedSyncEngine`ning `isOnline` parametri va `SyncPausedOffline` holati | Haqiqiy tarmoq kuzatuvi — **Phase 6B** |
+| Network State Handling | **(6B)** `NetworkStatus`/`NetworkStatusChange`, `NetworkStateMonitor` shartnomasi + boshqariladigan implementatsiya; `SyncScheduler` (ishga tushish sabablari); sikl o'rtasida uzilishga reaksiya | Platforma signali manbai (paket tanlovi ADR talab qiladi) va UI ko'rsatkichi |
+
+**Phase 6B qo'shimchalari (Network State Handling va rejalashtirish):**
+
+- `NetworkStateMonitor` — tarmoq holati manbai; reaksiya **holatga emas, O'TISHGA** bog'langan (`NetworkStatusChange.isRestored`), shuning uchun takroriy signallar keraksiz sikl boshlamaydi.
+- `SyncScheduler` — hujjatdagi barcha ishga tushish sabablarini (tarmoq tiklandi / ilova ochildi / old rejaga qaytdi / qo'lda) bitta joyga yig'adi; ilova hayot davri signali `AppLifecycleState` importisiz, oddiy metodlar orqali qabul qilinadi (offline yadro UI'dan mustaqil qoladi).
+- **Backoff endi haqiqatan kutiladi:** Phase 6A oraliqni hisoblardi, lekin muvaffaqiyatsiz amal keyingi siklda darhol qayta urinilardi. 6B `SyncBackoffPolicy.isReadyForRetry()` va dvigateldagi filtr orqali *"ortib boruvchi kutish oralig'i"* talabini amalda ta'minlaydi (FIFO tartibi buzilmaydi).
+- **Sikl o'rtasida tarmoq uzilishi** — qolgan amallar `pending` holida navbatda saqlanadi (`SyncReport.interruptedByOffline`), *"joriy bajarilayotgan so'rovlar xavfsiz tarzda navbatga qaytariladi"* talabiga muvofiq.
+- **Uzilib qolgan amallarni tiklash** — ilova sinxronizatsiya o'rtasida to'xtasa, `inProgress`da osilib qolgan amal keyingi sikl boshida qayta urinishga qaytariladi. Bularsiz amal mangu shu holatda qolib, foydalanuvchi uchun "jimgina yo'qolgan"ga aylanardi; idempotentlik kaliti o'zgarmagani uchun qayta yuborish takroriy yozuv hosil qilmaydi.
 
 Foydalanuvchiga ko'rsatiladigan holat (*"lokal saqlangan / yuborilishi kutilmoqda / sinxronlanmoqda / serverga yetkazildi"*) `SyncState` va `RecordSyncStatus` sifatida modellashtirilgan, lekin UI'ga hali ulanmagan (Phase 6A UI'ga tegmaydi).
 
