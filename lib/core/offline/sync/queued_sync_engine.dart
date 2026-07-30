@@ -1,0 +1,248 @@
+import 'dart:async';
+
+import '../conflict/conflict_resolution.dart';
+import '../conflict/conflict_resolution_strategy.dart';
+import '../queue/offline_queue.dart';
+import '../queue/pending_operation.dart';
+import 'sync_backoff_policy.dart';
+import 'sync_engine.dart';
+import 'sync_operation_outcome.dart';
+import 'sync_state.dart';
+
+/// `SyncEngine`ning navbatga asoslangan POYDEVOR implementatsiyasi.
+///
+/// **Hech qanday I/O bajarmaydi** — na HTTP, na Supabase, na fayl
+/// tizimi. U faqat `docs/ARCHITECTURE.md`, "Sync Engine" bo'limidagi
+/// QOIDALARNI amalga oshiradi:
+///
+/// | Hujjatdagi talab | Shu klassdagi ifodasi |
+/// |---|---|
+/// | FIFO tartib | `OfflineQueue.nextBatch()` tartibini o'zgartirmasdan qayta ishlaydi |
+/// | Bog'liq amallar ketma-ketligi | `nextBatch()` bog'liqligi qanoatlanmaganini bermaydi |
+/// | Idempotentlik | `PendingOperation.id` hech qachon o'zgartirilmaydi |
+/// | Vaqtinchalik xatolikda qayta urinish | `SyncTransientFailure` → `markFailed`, navbatda qoladi |
+/// | Doimiy xatolikda to'xtash | `SyncPermanentFailure` → `markNeedsAttention` |
+/// | Cheksiz urinmaslik | `SyncBackoffPolicy.shouldRetry()` chegarasi |
+/// | Ziddiyat | `ConflictResolutionStrategy`ga topshiradi |
+/// | Ma'lumot yo'qolmasligi | Muvaffaqiyatsiz amal navbatdan O'CHIRILMAYDI |
+///
+/// Haqiqiy tarmoq ishi butunlay `SyncOperationHandler` ortida —
+/// bu klass uni almashtirsangiz ham o'zgarmaydi.
+class QueuedSyncEngine implements SyncEngine {
+  QueuedSyncEngine({
+    required OfflineQueue queue,
+    required List<SyncOperationHandler> handlers,
+    ConflictResolutionStrategy conflictStrategy = const DefaultConflictResolutionStrategy(),
+    SyncBackoffPolicy backoffPolicy = const SyncBackoffPolicy(),
+    Future<bool> Function()? isOnline,
+    DateTime Function()? clock,
+    int batchLimit = 20,
+  }) : _queue = queue,
+       _handlers = handlers,
+       _conflictStrategy = conflictStrategy,
+       _backoffPolicy = backoffPolicy,
+       _isOnline = isOnline ?? _alwaysOnline,
+       _clock = clock ?? DateTime.now,
+       _batchLimit = batchLimit;
+
+  final OfflineQueue _queue;
+  final List<SyncOperationHandler> _handlers;
+  final ConflictResolutionStrategy _conflictStrategy;
+  final SyncBackoffPolicy _backoffPolicy;
+  final DateTime Function() _clock;
+  final int _batchLimit;
+
+  /// Tarmoq holatini tekshiruvchi funksiya.
+  ///
+  /// **Nega interfeys emas, oddiy funksiya va nega standart qiymati
+  /// "har doim onlayn":** haqiqiy tarmoq kuzatuvi
+  /// (`docs/ARCHITECTURE.md`, "Network State Handling") — keyingi
+  /// bosqich ishi va u platforma paketiga muhtoj (6A'da yangi
+  /// bog'liqlik qo'shilmaydi). Shu ilmoq oldindan qoldirilgani uchun
+  /// `SyncPausedOffline` holati hozircha ham to'liq modellashtirilgan
+  /// va sinaladigan.
+  final Future<bool> Function() _isOnline;
+
+  static Future<bool> _alwaysOnline() async => true;
+
+  final StreamController<SyncState> _stateController = StreamController<SyncState>.broadcast();
+
+  SyncState _currentState = const SyncIdle();
+
+  /// Bir vaqtda ikkita sikl ishlamasligi kafolati — aks holda bir xil
+  /// amal ikki marta yuborilishi mumkin edi.
+  bool _isRunning = false;
+
+  @override
+  Stream<SyncState> get state => _stateController.stream;
+
+  @override
+  SyncState get currentState => _currentState;
+
+  void _emit(SyncState next) {
+    _currentState = next;
+    if (!_stateController.isClosed) {
+      _stateController.add(next);
+    }
+  }
+
+  @override
+  Future<SyncReport> sync({required SyncTrigger trigger}) async {
+    if (_isRunning) {
+      // Yangi sikl BOSHLANMAYDI (shartnoma talabi) -- joriy holat
+      // qaytariladi.
+      return SyncReport(
+        trigger: trigger,
+        processed: 0,
+        succeeded: 0,
+        transientFailures: 0,
+        needsAttention: 0,
+      );
+    }
+
+    _isRunning = true;
+    try {
+      if (!await _isOnline()) {
+        _emit(SyncPausedOffline(pendingCount: await _queue.pendingCount()));
+        return SyncReport.skippedOffline(trigger);
+      }
+
+      final batch = await _queue.nextBatch(limit: _batchLimit);
+      if (batch.isEmpty) {
+        _emit(SyncIdle(pendingCount: await _queue.pendingCount()));
+        return SyncReport(
+          trigger: trigger,
+          processed: 0,
+          succeeded: 0,
+          transientFailures: 0,
+          needsAttention: 0,
+        );
+      }
+
+      var succeeded = 0;
+      var transientFailures = 0;
+      var needsAttention = 0;
+      var processed = 0;
+
+      for (final operation in batch) {
+        _emit(SyncInProgress(processed: processed, total: batch.length));
+
+        final resolved = await _processOne(operation);
+        processed += 1;
+
+        switch (resolved.status) {
+          case PendingOperationStatus.completed:
+            succeeded += 1;
+          case PendingOperationStatus.needsAttention:
+            needsAttention += 1;
+          case PendingOperationStatus.failed:
+            transientFailures += 1;
+          case PendingOperationStatus.pending:
+          case PendingOperationStatus.inProgress:
+            // Bu yerga tushmasligi kerak -- `_processOne` har doim
+            // yakuniy holat qaytaradi.
+            transientFailures += 1;
+        }
+      }
+
+      _emit(
+        SyncCompleted(
+          succeeded: succeeded,
+          failed: transientFailures,
+          needsAttention: needsAttention,
+        ),
+      );
+
+      return SyncReport(
+        trigger: trigger,
+        processed: processed,
+        succeeded: succeeded,
+        transientFailures: transientFailures,
+        needsAttention: needsAttention,
+      );
+    } finally {
+      _isRunning = false;
+    }
+  }
+
+  Future<PendingOperation> _processOne(PendingOperation operation) async {
+    final handler = _handlerFor(operation);
+    if (handler == null) {
+      // Amalni bajara oladigan handler yo'q -- bu dasturlash/konfiguratsiya
+      // xatosi, lekin amal JIMGINA yo'qolmasligi kerak: foydalanuvchi
+      // e'tiboriga chiqariladi.
+      return _save(
+        operation.markNeedsAttention(
+          'Bu amal turini bajara oladigan komponent ulanmagan '
+          '(${operation.entityType}/${operation.kind.name}).',
+        ),
+      );
+    }
+
+    final started = await _save(operation.markInProgress(at: _clock()));
+
+    SyncOperationOutcome outcome;
+    try {
+      outcome = await handler.perform(started);
+    } catch (error) {
+      // Handler shartnomasi exception tashlamaslikni talab qiladi,
+      // lekin kutilmagan xatolik ma'lumot yo'qolishiga olib
+      // kelmasligi kerak -- ehtiyotkorlik bilan VAQTINCHALIK deb
+      // qaraladi (amal navbatda qoladi).
+      outcome = SyncTransientFailure('Kutilmagan xatolik: $error');
+    }
+
+    return switch (outcome) {
+      SyncSuccess() => _save(started.markCompleted()),
+      SyncPermanentFailure(:final message) => _save(started.markNeedsAttention(message)),
+      SyncTransientFailure(:final message) => _save(_afterTransientFailure(started, message)),
+      SyncConflictDetected(:final conflict) => _save(
+        _applyConflictResolution(started, _conflictStrategy.resolve(conflict)),
+      ),
+    };
+  }
+
+  /// Vaqtinchalik xatolik: urinishlar chegarasiga yetgan bo'lsa,
+  /// amal `needsAttention`ga o'tadi -- *"jimgina cheksiz qayta
+  /// urinilmaydi"*.
+  PendingOperation _afterTransientFailure(PendingOperation operation, String message) {
+    if (!_backoffPolicy.shouldRetry(operation.attemptCount)) {
+      return operation.markNeedsAttention(_backoffPolicy.exhaustedReason(operation.attemptCount));
+    }
+    return operation.markFailed(message);
+  }
+
+  /// Ziddiyat qarorini amal holatiga aylantiradi.
+  ///
+  /// **`ApplyLocalChange` amalni `pending` holatiga QAYTARADI:** qaror
+  /// "mahalliy o'zgarish yuborilsin" degani, lekin uni yuborish
+  /// keyingi sikl ishi -- shu bilan qaror qabul qilish va bajarish
+  /// ajratilgan qoladi.
+  PendingOperation _applyConflictResolution(
+    PendingOperation operation,
+    ConflictResolution resolution,
+  ) {
+    return switch (resolution) {
+      ApplyLocalChange() => operation.markFailed(
+        'Ziddiyat mahalliy foydasiga hal qilindi -- keyingi siklda qayta yuboriladi.',
+      ),
+      KeepServerState(:final reason) => operation.markNeedsAttention(reason),
+      EscalateToUser(:final reason) => operation.markNeedsAttention(reason),
+    };
+  }
+
+  SyncOperationHandler? _handlerFor(PendingOperation operation) {
+    for (final handler in _handlers) {
+      if (handler.canHandle(operation)) return handler;
+    }
+    return null;
+  }
+
+  Future<PendingOperation> _save(PendingOperation operation) async {
+    await _queue.update(operation);
+    return operation;
+  }
+
+  /// Oqimni yopadi (ilova to'xtaganda).
+  Future<void> dispose() => _stateController.close();
+}

@@ -195,6 +195,21 @@ Bu tamoyil quyidagi aniq talablar orqali amalga oshiriladi:
 
 Ushbu talabning texnik amalga oshirilishi uchta bir-biriga bog'liq quyi komponentga bo'linadi — **Local Storage** (ma'lumot qayerda va qanday saqlanadi), **Sync Engine** (mahalliy va server holati qanday muvofiqlashtiriladi) va **Network State Handling** (tarmoq holati qanday aniqlanadi va ilova xatti-harakatiga ta'sir qiladi) — bular navbatdagi bo'limlarda batafsil yoritiladi.
 
+### Amalga oshirish holati (Module 6, Phase 6A — 2026-07-30)
+
+Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** `lib/core/offline/`da qurildi (batafsil: [`lib/core/offline/README.md`](../lib/core/offline/README.md)). Bu — **faqat arxitektura va interfeyslar**: hech qanday HTTP/WebSocket, Supabase SDK, backend/Edge Function kodi, API kalit yoki UI o'zgarishi qo'shilmagan, yangi paket bog'liqligi ham olinmagan.
+
+| Bo'lim | Phase 6A'da qurilgan | Hali qurilmagan |
+|---|---|---|
+| Local Storage | `LocalStore<T>`/`LocalStorage` shartnomasi + xotiradagi implementatsiya; `LocalDataSource<T>` va `RecordSyncStatus` | **Doimiylik (persistence)** — saqlash paketi (Drift/Isar/Hive/sqflite) tanlanmagan, ADR talab qilinadi |
+| Sync Engine | `SyncEngine`/`SyncOperationHandler` shartnomalari, `PendingOperation`/`OfflineQueue` (FIFO + bog'liqlik tartibi + idempotentlik kaliti), `SyncBackoffPolicy`, `QueuedSyncEngine` (I/O'siz orkestratsiya) | Haqiqiy yuborish (`SyncOperationHandler` implementatsiyasi), fon rejimi jadvali |
+| Conflict Resolution | `SyncConflict`, `ConflictResolution` (sealed), `DefaultConflictResolutionStrategy` — shu bo'limdagi to'rtala qoidaning xolis ifodasi | Ziddiyatni ANIQLASH (server javobini taqqoslash) va audit izini yozish |
+| Network State Handling | Faqat ilmoq: `QueuedSyncEngine`ning `isOnline` parametri va `SyncPausedOffline` holati | Haqiqiy tarmoq kuzatuvi — **Phase 6B** |
+
+Foydalanuvchiga ko'rsatiladigan holat (*"lokal saqlangan / yuborilishi kutilmoqda / sinxronlanmoqda / serverga yetkazildi"*) `SyncState` va `RecordSyncStatus` sifatida modellashtirilgan, lekin UI'ga hali ulanmagan (Phase 6A UI'ga tegmaydi).
+
+Chegaralar `test/core/offline/offline_architecture_boundary_test.dart` orqali CI darajasida majburlanadi.
+
 ## Local Storage
 
 - **Vazifasi:** Flutter App ichida, Supabase'ga bog'liq bo'lmagan holda ishlaydigan mahalliy (on-device) ma'lumot qatlami — offline-first talabining asosiy texnik poydevori.
