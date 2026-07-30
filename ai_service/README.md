@@ -1,4 +1,4 @@
-# ai_service/ — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A–5B)
+# ai_service/ — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A–5C)
 
 **Bu papka Flutter mobil ilovaning (`lib/`) bir qismi EMAS.**
 
@@ -30,6 +30,10 @@ ai_service/
 │   ├── quota/        Foydalanuvchi darajasidagi kunlik/oylik so'rov kvotasi (Phase 4B)
 │   ├── case/         Case/CaseStatus/CaseCategory/CasePriority/CaseTimeline + intake/
 │   │                 (CaseIntakeAssistant -- Module 5, Phase 5B)
+│   ├── workflow/     Yordam OQIMI (Module 5, Phase 5C) -- InformationRequirement(+Catalog),
+│   │                 CollectedInformation, completeness/, clarification/, action_plan/,
+│   │                 recommendation/ (RecommendationEngine -- almashtiriladigan chegara),
+│   │                 progress/ (CaseProgress)
 │   └── prompt/       PromptPipeline, 5 ta PromptContext, ContextAssembler
 ├── protocol/         Klient ↔ backend SIMLI (wire) shartnoma — AIRequestEnvelope, AIResponseEnvelope,
 │                     AIProtocolStreamEvent, AIProtocolError, va Phase 4B kontraktlari (credential,
@@ -43,7 +47,8 @@ ai_service/
 │                     (AIRuntimeConfig, AICredentialResolver -- interfeys), admin/
 │                     (4 ta boshqaruv interfeysi, UI yo'q)
 ├── data/             Provayderdan mustaqil implementatsiya (providers/, session/, repositories/,
-│                     intake/ -- MockCaseIntakeAssistant, Phase 5B)
+│                     intake/ -- MockCaseIntakeAssistant, Phase 5B; workflow/ -- statik savol
+│                     katalogi va MockRecommendationEngine, Phase 5C)
 ├── safety/           AISafetyService — placeholder interfeys, implementatsiyasiz
 ├── presentation/      Backend kontekstidagi "kirish nuqtasi" (AIServiceHandler, yupqa/thin)
 └── di/               Kompozitsiya nuqtasi (AIServiceLocator) — Phase 4C'dan beri qisman pluggable,
@@ -52,6 +57,6 @@ ai_service/
 
 Batafsil arxitektura: [`docs/AI_ARCHITECTURE.md`](../docs/AI_ARCHITECTURE.md).
 
-## Ko'lam (Module 4, Phase 1–4C; Module 5, Phase 5A–5B)
+## Ko'lam (Module 4, Phase 1–4C; Module 5, Phase 5A–5C)
 
-Faqat arxitektura, poydevor va shartnoma (kontrakt) — hech qanday haqiqiy ijro emas. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan. Phase 4B qo'shgan validatsiya/rate-limit/kvota/persistensiya kontraktlari Phase 4C'da `AIGatewayImpl`/`AIServiceLocator`ga qisman ulandi (rate-limit/kvota — ixtiyoriy, standart holatda o'chirilgan; qolganlari hamon faqat shakl). Module 5, Phase 5A — AI provayderlarning O'ZINI (yoqilgan/o'chirilgan, model, limitlar, xarajat) admin/backend darajasida boshqarish kontrakti — API kalitlar hech qachon Flutter ilovasida bo'lmaydi, faqat `AICredentialReference` (ishora, kalit emas) orqali `AICredentialResolver`ga (interfeys, implementatsiyasiz) uzatiladi. Module 5, Phase 5B — foydalanuvchiga qaratilgan `Case` mavhumligi (toifa/muhimlik/hayot-davri/suhbat ishorasi) va uni `AIConversation`ga bog'lovchi intake oqimi — FAQAT soxta (mock) savol generatori bilan, hech qanday huquqiy xulosa/haqiqiy AI. Qarang: `docs/AI_ARCHITECTURE.md`, "Backend Implementation Readiness (Module 4, Phase 4C)", "AI Configuration and Control Foundation (Module 5, Phase 5A)" va "AI Case and Conversation Foundation (Module 5, Phase 5B)".
+Faqat arxitektura, poydevor va shartnoma (kontrakt) — hech qanday haqiqiy ijro emas. **Yo'q:** haqiqiy provayder chaqiruvi (HTTP/SDK), prompt matni/mazmuni, xavfsizlik tekshiruvi implementatsiyasi, backend/Edge Function implementatsiyasi, `protocol/`ni haqiqiy HTTP/WebSocket handlerga ulash. Har bir provayder adapteri va xavfsizlik interfeysi ataylab `UnimplementedError`/konkret klasssiz qoldirilgan. Phase 4B qo'shgan validatsiya/rate-limit/kvota/persistensiya kontraktlari Phase 4C'da `AIGatewayImpl`/`AIServiceLocator`ga qisman ulandi (rate-limit/kvota — ixtiyoriy, standart holatda o'chirilgan; qolganlari hamon faqat shakl). Module 5, Phase 5A — AI provayderlarning O'ZINI (yoqilgan/o'chirilgan, model, limitlar, xarajat) admin/backend darajasida boshqarish kontrakti — API kalitlar hech qachon Flutter ilovasida bo'lmaydi, faqat `AICredentialReference` (ishora, kalit emas) orqali `AICredentialResolver`ga (interfeys, implementatsiyasiz) uzatiladi. Module 5, Phase 5B — foydalanuvchiga qaratilgan `Case` mavhumligi (toifa/muhimlik/hayot-davri/suhbat ishorasi) va uni `AIConversation`ga bog'lovchi intake oqimi — FAQAT soxta (mock) savol generatori bilan, hech qanday huquqiy xulosa/haqiqiy AI. Module 5, Phase 5C — foydalanuvchini muammo tavsifidan TARTIBLANGAN keyingi qadamlar tuzilmasigacha olib boruvchi oqim: qaysi ma'lumot yetishmayotgani (statik katalog + `ClarificationWorkflow`), yetarli ma'lumot to'planganmi (`InformationCompleteness` — sof MEXANIK ro'yxat tekshiruvi, huquqiy baho EMAS), keyin nima qilish kerak (`RecommendationEngine` — provayderdan mustaqil, almashtiriladigan chegara; hozircha faqat `MockRecommendationEngine`) va bularning progressi (`CaseProgress`). Hech qanday hujjat generatsiyasi, huquqiy xulosa yoki API kaliti yo'q — oqim har doim odamga topshirish/keyingi bosqichga ishora bilan yakunlanadi. Bu chegara `test/ai_service/workflow_provider_independence_test.dart` bilan avtomatik qulflangan. Qarang: `docs/AI_ARCHITECTURE.md`, "Backend Implementation Readiness (Module 4, Phase 4C)", "AI Configuration and Control Foundation (Module 5, Phase 5A)", "AI Case and Conversation Foundation (Module 5, Phase 5B)" va "AI Assistance Workflow Foundation (Module 5, Phase 5C)".

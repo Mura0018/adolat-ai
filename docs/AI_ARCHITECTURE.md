@@ -1,10 +1,12 @@
-# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A–5B)
+# AI_ARCHITECTURE.md — AI Service Foundation (Module 4, Phase 1–4C; Module 5, Phase 5A–5C)
 
 Bu hujjat `ai_service/` (repozitoriya ildizida, `lib/`dan tashqarida) qurilgan AI Service arxitekturasini tasvirlaydi. **Ko'lam: faqat poydevor va arxitektura — haqiqiy huquqiy fikrlash mantig'i yoki prompt mazmuni bu bosqichda yozilmagan.** Phase 4A'dan boshlab bu hujjat `lib/core/ai_client/`ni ham qamrab oladi — `ai_service/`ning Flutter klient tomonidagi ko'zgusi (mirror) hamkasbi, quyidagi "Klient Integratsiya Poydevori" bo'limiga qarang. Phase 4B — **backend KONTRAKTINING** (endpoint/validatsiya/autentifikatsiya/rate-limit/token-hisob/kvota/persistensiya/fayl-yuklash/versiya-kelishuvi) to'liq shakli, quyidagi "Backend Contract (Module 4, Phase 4B)" bo'limiga qarang. Phase 4C — o'sha kontraktni HAQIQIY ijro zanjiriga ulaydigan **READINESS** bosqichi (rate-limit/kvota gateway darajasida yoqiladigan, kompozitsiya ildizi pluggable qilinadigan, yangi adapter chegaralari qo'shiladigan), quyidagi "Backend Implementation Readiness (Module 4, Phase 4C)" bo'limiga qarang -- hech qanday HTTP/Edge Function/haqiqiy provayder implementatsiyasi hamon YO'Q.
 
 **Module 5, Phase 5A (AI Configuration and Control Foundation):** Module 4 butunlay "bitta so'rov qanday ishlaydi" (request pipeline) haqida edi. Module 5 boshqa savolga javob beradi: **AI provayderlarning O'ZI (qaysi yoqilgan, qaysi model, qaysi limitlar, qancha xarajat) qanday BOSHQARILADI** -- admin panel/backend konfiguratsiya qatlami orqali, Flutter ilovasi ichida HECH QACHON emas. Yangi `ai_service/config/` papkasi (`domain/`, `runtime/`, `admin/` -- pastdagi "AI Configuration and Control Foundation (Module 5, Phase 5A)" bo'limiga qarang) shu savolga javob beradi. Hech qanday OpenAI/Gemini/Claude SDK, API kalit yoki haqiqiy AI chaqiruvi qo'shilmagan -- faqat BOSHQARUV arxitekturasi.
 
 **Module 5, Phase 5B (AI Case and Conversation Foundation):** Phase 5A "provayderlar qanday boshqariladi" savoliga javob berdi. Phase 5B esa foydalanuvchi TOMONIGA qaytadi: **foydalanuvchi muammosini qanday YARATADI, AI bilan qanday MULOQOT qiladi, va bu jarayon qanday KUZATILADI (lifecycle)**. Yangi `ai_service/domain/case/` -- `AIConversation` (Module 4)dan YUQORI darajadagi `Case` mavhumligi: toifa (`CaseCategory`), muhimlik (`CasePriority`), hayot-davri holati (`CaseStatus`, yettita bosqich) va voqealar tarixi (`CaseTimeline`). Har bir `Case` bitta `AIConversation`ga ishora qiladi (`conversationId`), lekin suhbat tarixining o'zi mustaqil qoladi. Foydalanuvchi muammoni tushuntirganda ishga tushadigan intake oqimi FAQAT soxta (mock) savol generatoriga tayanadi (`MockCaseIntakeAssistant`) -- hech qanday huquqiy xulosa, hech qanday haqiqiy AI. Pastdagi "AI Case and Conversation Foundation (Module 5, Phase 5B)" bo'limiga qarang.
+
+**Module 5, Phase 5C (AI Assistance Workflow Foundation):** Phase 5B foydalanuvchiga ish (case) yaratish va AI bilan muloqot qilish imkonini berdi, lekin muloqotning O'ZI qayerga olib borishi ochiq qolgan edi. Phase 5C shu bo'shliqni to'ldiradi: **foydalanuvchi muammosini tushuntirgandan keyin, TARTIBLANGAN keyingi qadamlar tuzilmasigacha bo'lgan yo'l**. Yangi `ai_service/domain/workflow/` to'rtta bog'liq savolga javob beradi -- qaysi ma'lumot yetishmayapti (`InformationRequirement` + `ClarificationWorkflow`), yetarli ma'lumot to'planganmi (`InformationCompleteness`), keyin nima qilish kerak (`RecommendationEngine` -- almashtiriladigan chegara), va bularning hammasi foydalanuvchiga qanday ko'rsatiladi (`CaseProgress`, `ActionPlan`). Hech qanday haqiqiy AI, API kalit, hujjat generatsiyasi yoki huquqiy xulosa YO'Q -- tavsiyalar `MockRecommendationEngine`dan, savollar esa statik katalogdan keladi. Pastdagi "AI Assistance Workflow Foundation (Module 5, Phase 5C)" bo'limiga qarang.
 
 **Phase 2A yangilanishi:** Phase 1'dagi yagona `AISessionManager` klassi ikkita alohida, abstrakt shartnomaga ega qismga bo'lindi — `ConversationRepository` (suhbat tarixi/hayot davri) va `AICancellationRegistry` (bekor qilish kuzatuvi) — "Conversation Repository Contracts" bo'limiga qarang. `AIConversation`ga hayot davri holati (`AIConversationStatus`) va `close()` qo'shildi; `AIServiceHandler` endi oqim natijasini suhbat tarixiga avtomatik yozadi (quyidagi "Request Flow"ga qarang).
 
@@ -1198,6 +1200,230 @@ RASMIY bog'lanish (hali qaror qilinmagan -- kelgusi bosqich), va
 albatta -- haqiqiy AI chaqiruvi, API kalit, huquqiy xulosa mantig'i
 (talab: "DO NOT connect real AI providers... DO NOT create legal
 verdict logic... DO NOT generate final legal documents").
+
+## AI Assistance Workflow Foundation (Module 5, Phase 5C)
+
+Foydalanuvchi muammosini tushuntirishdan TARTIBLANGAN keyingi qadamlar
+tuzilmasigacha bo'lgan oqim. Butun kod `ai_service/domain/workflow/`
+(entity'lar va qoidalar), `ai_service/data/workflow/` (mock mazmun) va
+`ai_service/domain/usecases/`da (orkestratsiya) joylashgan.
+
+### Umumiy zanjir
+
+```mermaid
+flowchart TD
+    Case["Case.collectedInformation\n(joriy holat, Phase 5C qo'shimchasi)"]
+    Catalog["InformationRequirementCatalog\n(data/workflow/, statik/mock)"]
+    Eval["InformationCompletenessEvaluator\n→ RequirementChecklistEvaluator"]
+    Comp["InformationCompleteness\n(satisfied / missing / isSufficient)"]
+    Clar["ClarificationWorkflow\n→ ClarificationStep (1/N)"]
+    Prog["CaseProgress\n(nima to'plangan / nima yetishmayapti)"]
+    Engine["RecommendationEngine\n(ALMASHTIRILADIGAN chegara,\nhozircha MockRecommendationEngine)"]
+    Builder["ActionPlanBuilder\n(xolis tartiblash)"]
+    Plan["ActionPlan\n(1..N tartibli qadamlar)"]
+
+    Case --> Eval
+    Catalog --> Eval
+    Eval --> Comp
+    Comp --> Clar
+    Comp --> Prog
+    Comp --> Engine
+    Engine -->|"List&lt;Recommendation&gt;"| Builder
+    Builder --> Plan
+```
+
+Kelgusida haqiqiy AI **faqat** `RecommendationEngine` (va, xohishga
+ko'ra, `InformationCompletenessEvaluator`) ortiga qo'yiladi -- qolgan
+hamma narsa (tuzilma invariantlari, tartiblash, progress hisobi,
+xavfsizlik tekshiruvlari) o'zgarishsiz qoladi.
+
+### 1. Clarification workflow
+
+| Tur | Fayl | Vazifasi |
+|---|---|---|
+| `InformationRequirement` | `workflow/information_requirement.dart` | Bitta ma'lumot bo'lagi (slot): `id` + savol matni + majburiylik |
+| `InformationRequirementCatalog` | `workflow/information_requirement_catalog.dart` | Toifa → bo'laklar ro'yxati (interfeys) |
+| `StaticInformationRequirementCatalog` | `data/workflow/` | Oldindan yozilgan, deterministik ro'yxat (mock) |
+| `ClarificationStep` | `workflow/clarification/clarification_step.dart` | Oqimdagi bitta qadam: bo'lak + `stepNumber`/`totalSteps` |
+| `ClarificationWorkflow` | `workflow/clarification/clarification_workflow.dart` | Navbatdagi/qolgan savollarni hisoblovchi xolis (pure) xizmat |
+
+**"AI determines missing information" qanday ta'minlangan (haqiqiy
+AI'siz):** "yetishmayotgan ma'lumot" -- bu KATALOGDAGI bo'laklardan
+qaysilari `Case.collectedInformation`da yo'qligi. Ya'ni savol
+generatsiyasi va yetishmayotgan ma'lumot ro'yxati -- BIR narsaning
+ikki tomoni, YAGONA manbadan (`InformationRequirement.question`).
+Shu sababli Phase 5B'dagi `MockCaseIntakeAssistant` ham shu katalogga
+KO'CHIRILDI (`DEVELOPMENT_RULES.md`, 7-band, DRY) -- natijada
+`CaseIntakeQuestion.id` == `InformationRequirement.id`, ya'ni
+foydalanuvchining javobi to'g'ridan-to'g'ri kerakli bo'lakka
+bog'lanadi (ilgari `complaint_q1` kabi ID hech narsaga bog'lanmasdi).
+
+**Savollar tartibi ATAYLAB:** avval majburiy bo'laklar (katalog
+tartibida), keyin ixtiyoriylari -- foydalanuvchi oqimni yarim yo'lda
+to'xtatsa ham eng muhim ma'lumot yig'ilgan bo'ladi.
+
+### 2. Information completeness evaluation
+
+`InformationCompleteness` (`workflow/completeness/`) --
+`satisfied`/`missing` ajratmasi, ustiga qurilgan xossalar:
+`missingMandatory`, `missingOptional`, `isSufficient`,
+`completionRatio`.
+
+**"No legal judgement" qanday ta'minlangan:**
+
+| Xavf | Qanday oldi olingan |
+|---|---|
+| Baho "huquqiy xulosa"ga aylanib ketishi | `isSufficient` FAQAT "majburiy deb belgilangan savollarga javob berildimi" degan MEXANIK tekshiruv -- ishning asosli/asossizligi haqida hech qanday da'vo yo'q. Evaluator implementatsiyasi (`RequirementChecklistEvaluator`) sof to'plam ayirmasi, boshqa hech narsa emas. |
+| Baho holatni avtomatik siljitishi | `EvaluateCaseCompletenessUseCase` `Case`ni O'ZGARTIRMAYDI -- `CaseStatus`ni siljitish alohida `AdvanceCaseStatusUseCase` chaqiruvi (Phase 5B'da o'rnatilgan intizom, `test/ai_service/case_workflow_usecases_test.dart`, "does not advance the case status by itself"). |
+| Bo'sh javob bilan "to'liqlik" yasash | `CollectedInformation.has()` bo'sh/faqat probel matnni to'ldirilgan deb HISOBLAMAYDI. |
+| Katalogda toifa yo'qligi oqimni to'sib qo'yishi | Bo'sh katalog → `isSufficient == true`, `completionRatio == 1.0` (`DEVELOPMENT_RULES.md`, 18-band -- boshi berk holat yo'q). |
+
+### 3. Action plan foundation
+
+```mermaid
+flowchart LR
+    R["List&lt;Recommendation&gt;\n(tartibsiz bo'lishi mumkin)"]
+    B["RecommendationBasedActionPlanBuilder\n· barqaror (stable) tartiblash\n· 1..N qayta raqamlash"]
+    P["ActionPlan\n(invariant: order == 1..N)"]
+    R --> B --> P
+```
+
+| Tur | Fayl | Vazifasi |
+|---|---|---|
+| `NextStepKind` | `workflow/next_step_kind.dart` | Qadam TURI -- `Recommendation` va `ActionPlanStep` UCHUN UMUMIY (DRY) |
+| `ActionPlanStep` | `workflow/action_plan/action_plan_step.dart` | Bitta qadam: tartib, tur, matn, `requirementId`, holat |
+| `ActionPlan` | `workflow/action_plan/action_plan.dart` | Tartibli qadamlar to'plami + tartib invarianti |
+| `ActionPlanBuilder` | `workflow/action_plan/action_plan_builder.dart` | Tavsiya → reja (interfeys) |
+| `RecommendationBasedActionPlanBuilder` | shu papka | Xolis implementatsiya -- MAZMUN yaratmaydi |
+
+**"Ordered structure" -- majburlangan invariant:** `ActionPlan`
+konstruktori qadamlar `order` qiymatlari 1'dan boshlanib UZLUKSIZ
+o'sishini tekshiradi, aks holda `InvalidActionPlanOrderException`
+tashlanadi. Tavsiya manbai (kelgusida haqiqiy AI) bo'shliq
+qoldirsa/takrorlasa ham, tuzuvchi tartibni SAQLAB, raqamlarni QAYTA
+beradi -- shuning uchun foydalanuvchi doim "1, 2, 3" ko'radi.
+
+**Nima QILINMAYDI (talab: "No final legal advice", "No document
+generation"):**
+
+- Reja ishning huquqiy istiqboli/natijasi haqida hech narsa aytmaydi
+  -- faqat jarayon qadamlari.
+- `NextStepKind.prepareDocumentLater` -- hujjat bosqichiga faqat
+  ISHORA; hech qanday hujjat matni/shabloni yaratilmaydi.
+- Reja tuzilishi ishni `CaseStatus.actionPlanning`ga O'ZI
+  o'tkazmaydi.
+- `RecommendationBasedActionPlanBuilder` hech qanday yangi jumla
+  YASAMAYDI -- qadam matni to'g'ridan-to'g'ri `Recommendation.message`
+  (`test/ai_service/recommendation_based_action_plan_builder_test.dart`,
+  "produces no content of its own"). Shu bilan "huquqiy maslahat
+  bermaslik" mas'uliyati BITTA joyda -- tavsiya dvigatelida --
+  jamlanadi.
+
+### 4. Recommendation engine abstraction
+
+`RecommendationEngine` (`workflow/recommendation/recommendation_engine.dart`)
+-- Phase 5C'ning ASOSIY almashtirish nuqtasi:
+
+```
+recommend(RecommendationContext) -> Future<List<Recommendation>>
+```
+
+`RecommendationContext` ATAYLAB `Case`ning O'ZI emas -- faqat
+`category` + `status` + `completeness` uzatiladi. Foydalanuvchi ID'si
+va muammoning xom matni (`problemSummary`, sezgir bo'lishi mumkin)
+kelgusida haqiqiy AI joylashadigan chegaradan O'TMAYDI --
+`UserContext`ning ataylab minimal ekanligi (`docs/adr/ADR-006`,
+Module 4, Phase 2B) bilan bir xil intizom.
+
+`MockRecommendationEngine` (`data/workflow/`) qoidalari -- to'liq ochiq
+va deterministik:
+
+1. har bir yetishmayotgan MAJBURIY bo'lak → `collectInformation`;
+2. keyin yetishmayotgan IXTIYORIY bo'laklar;
+3. majburiylar to'liq bo'lsa → `reviewCollectedInformation`;
+4. yakuniy qadam: `documentGeneration` toifasi uchun
+   `prepareDocumentLater`, qolganlari uchun `consultHumanSpecialist`.
+
+**Oqim HECH QACHON huquqiy xulosa bilan yakunlanmaydi** -- oxirgi
+qadam har doim odamga topshirish yoki keyingi bosqichga ishora
+(`docs/DEVELOPMENT_RULES.md`, 15–16-band; test bilan qulflangan:
+`mock_recommendation_engine_test.dart`, "never ends the flow with a
+legal conclusion"). Yakunlangan/arxivlangan ish uchun umuman tavsiya
+berilmaydi (bo'sh `ActionPlan`).
+
+**Provayderdan mustaqillik AVTOMATIK tekshiriladi:**
+`test/ai_service/workflow_provider_independence_test.dart`
+`ai_service/domain/workflow/` va `ai_service/data/workflow/`ning har
+bir faylini skanerlab, `data/providers/`, `gateway/`, `protocol/`,
+`config/`, `AIRepository`, `AIProviderId` importlaridan birortasi
+topilsa CI'ni qizil qiladi; ikkinchi tekshiruv esa kodda (izohlarda
+emas) `apiKey`/`secret`/`credential` kabi belgilar yo'qligini
+kafolatlaydi (talab: "No API keys"). Bu -- Phase 4C'dagi
+`architecture_boundary_test.dart` bilan bir xil yondashuv: chegara
+kod ko'rib chiqishga emas, `flutter test`ning o'ziga tayanadi.
+
+### 5. Progress tracking
+
+`CaseProgress` (`workflow/progress/case_progress.dart`) IKKI xil
+progressni ATAYLAB alohida ko'rsatadi:
+
+| Ko'rsatkich | Ma'nosi |
+|---|---|
+| `completedInformation` / `missingInformation` | Nima to'plangan / nima yetishmayapti (bo'lak ro'yxati) |
+| `missingMandatoryInformation` | Keyingi bosqichga o'tishni TO'SIB turgan bo'laklar |
+| `informationCompletionRatio` | 0.0–1.0, barcha bo'laklar bo'yicha |
+| `isInformationSufficient` | Majburiylar to'liqmi (**huquqiy baho emas**) |
+| `lifecycleStageIndex` / `lifecycleStageCount` | `CaseStatus` bo'yicha bosqich (Phase 5B) |
+
+**Progress SAQLANMAYDI, HISOBLANADI:** `GetCaseProgressUseCase` uni
+har safar joriy `Case.collectedInformation` + katalogdan qayta
+hisoblaydi. Shu bilan katalogga yangi majburiy bo'lak qo'shilganda
+MAVJUD ishlarning progressi avtomatik to'g'ri qoladi -- saqlangan
+progress esa eskirib qolardi.
+
+**Ma'lumot to'liqligi ish holatini AVTOMATIK siljitmaydi** -- ikkala
+progress mustaqil (`case_progress_test.dart`, "reports the lifecycle
+stage position independently of information progress").
+
+### 6. Case va repozitoriy o'zgarishlari (Phase 5B ustiga)
+
+| O'zgarish | Sabab |
+|---|---|
+| `Case.collectedInformation` (yangi maydon, standart bo'sh) | Progress uchun JORIY holat kerak. `CaseTimeline` -- xronologik AUDIT izi (javob tuzatilsa ikkala yozuv qoladi), `collectedInformation` esa ustiga yoziladigan joriy qiymat. Ikkalasi ataylab alohida. |
+| `Case.withInformation(...)` | O'zgarmaslik naqshi -- `withStatus()`/`appendTimelineEvent()` bilan bir xil. |
+| `CaseRepository.recordInformation(...)` + `InMemoryCaseRepository` | Bo'lakni saqlash; bo'lakning haqiqiyligi repositoryda EMAS, usecase'da tekshiriladi (repository "aqlsiz" -- Phase 5B qatlamlash falsafasi). |
+| `Case.toString()` endi `information: N filled` chiqaradi | Faqat SONI -- javob matnlari hech qachon (`case_test.dart`, "never includes collected answer values"). |
+
+### 7. UseCase'lar
+
+| UseCase | Vazifasi |
+|---|---|
+| `RecordCaseInformationUseCase` | Javobni ANIQ bo'lakka bog'lab yozadi; `RecordCaseAnswerUseCase` (Phase 5B) ustiga quriladi -- suhbat/timeline yozuvi TAKRORLANMAYDI |
+| `EvaluateCaseCompletenessUseCase` | Ma'lumot yetarlimi (holatni o'zgartirmaydi) |
+| `NextClarificationQuestionUseCase` | Navbatdagi savol (`call()`) va qolgan savollar (`remaining()`) |
+| `BuildCaseActionPlanUseCase` | To'liq zanjir: to'liqlik → tavsiya → tartibli reja |
+| `GetCaseProgressUseCase` | Progress kesimi |
+
+### 8. Xavfsizlik qoidalari
+
+| Qoida | Qanday ta'minlangan |
+|---|---|
+| User can only access own cases | Phase 5C'ning BARCHA beshta usecase'i `GetCaseUseCase`ni ICHIGA oladi -- egalik tekshiruvi (`CaseAccessDeniedException`) bitta joyda, qayta yozilmagan holda qo'llanadi. Har bir usecase uchun alohida "enforces case ownership" testi bor. |
+| No sensitive information in domain logs | `CollectedInformation.toString()` na javob qiymatini, na bo'lak kalitini chiqaradi (faqat soni); `Case.toString()` ham shunday; `CaseProgress` javoblarni umuman SAQLAMAYDI (faqat bo'lak ta'riflari). |
+| No secrets / No API keys | Ish oqimi qatlamida hisob ma'lumoti uchun MAYDON ham, `config/`ga import ham yo'q -- avtomatik test bilan qulflangan (yuqoridagi 4-bandga qarang). |
+| Noto'g'ri kalit bilan yozishning oldini olish | `RecordCaseInformationUseCase` katalogda yo'q `requirementId`ni rad etadi (`UnknownInformationRequirementException`) va bunda HECH NARSA yozmaydi -- na suhbatga, na ishga (`record_case_information_usecase_test.dart`, "writes nothing at all when the requirement is unknown"). |
+
+### Bu bosqichda YO'Q
+
+- Haqiqiy AI provayder integratsiyasi, API kalit, prompt matni.
+- Hujjat generatsiyasi (shablon, matn, eksport) -- faqat NOMLANGAN
+  kelgusi qadam (`prepareDocumentLater`).
+- Huquqiy xulosa/verdikt mantig'i, ishning istiqbolini baholash.
+- Tashqi baza (progress/reja hech qayerda saqlanmaydi -- har safar
+  hisoblanadi; `Case` esa hamon `InMemoryCaseRepository`da).
+- UI/ekranlar (`lib/` umuman tegilmagan).
+- Rejani ish holati bilan avtomatik bog'lash (`CaseStatus`ni siljitish
+  hamon aniq, alohida chaqiruv).
 
 ## Bog'liq hujjatlar
 

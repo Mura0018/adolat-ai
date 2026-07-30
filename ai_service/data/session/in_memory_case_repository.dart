@@ -96,4 +96,15 @@ class InMemoryCaseRepository implements CaseRepository {
     _cases[caseId] = updated;
     return updated;
   }
+
+  @override
+  Case recordInformation(String caseId, String requirementId, String value) {
+    final existing = _cases[caseId];
+    if (existing == null) {
+      throw CaseNotFoundException(caseId);
+    }
+    final updated = existing.withInformation(requirementId, value, at: DateTime.now());
+    _cases[caseId] = updated;
+    return updated;
+  }
 }

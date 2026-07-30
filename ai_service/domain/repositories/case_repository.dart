@@ -57,4 +57,22 @@ abstract interface class CaseRepository {
   ///
   /// Tashlaydi: `CaseNotFoundException` -- ish topilmasa.
   Case addTimelineEvent(String caseId, CaseTimelineEvent event);
+
+  /// Bitta TUZILMALI ma'lumot bo'lagini yozadi/ustiga yozadi
+  /// (`Case.collectedInformation`) -- Module 5, Phase 5C qo'shimchasi
+  /// (talab: "Progress tracking").
+  ///
+  /// [requirementId]ning shu ish TOIFASI uchun haqiqiy ekanligi bu
+  /// yerda TEKSHIRILMAYDI -- katalog tekshiruvi usecase qatlamida
+  /// (`domain/usecases/record_case_information_usecase.dart`), xuddi
+  /// egalik tekshiruvi `getById()`da emas, `GetCaseUseCase`da
+  /// bo'lgani kabi: repository "aqlsiz" qoladi.
+  ///
+  /// Timeline yozuvi bu metodda QO'SHILMAYDI (`updateStatus()`dan
+  /// farqli) -- javobni suhbatga va timeline'ga yozish usecase
+  /// darajasidagi orkestratsiya (`RecordCaseAnswerUseCase`, Phase 5B),
+  /// bu metod esa faqat joriy holatni saqlaydi.
+  ///
+  /// Tashlaydi: `CaseNotFoundException` -- ish topilmasa.
+  Case recordInformation(String caseId, String requirementId, String value);
 }

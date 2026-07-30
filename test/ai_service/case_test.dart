@@ -70,11 +70,48 @@ void main() {
     });
   });
 
+  group('Case.withInformation', () {
+    test('starts with no collected information', () {
+      expect(_case().collectedInformation.isEmpty, isTrue);
+    });
+
+    test('returns a new instance and leaves the original untouched', () {
+      final original = _case();
+
+      final updated = original.withInformation(
+        'complaint_target',
+        'Tuman hokimligi',
+        at: DateTime(2026, 1, 2),
+      );
+
+      expect(original.collectedInformation.isEmpty, isTrue);
+      expect(updated.collectedInformation.valueFor('complaint_target'), 'Tuman hokimligi');
+      expect(updated.updatedAt, DateTime(2026, 1, 2));
+      expect(updated.status, original.status);
+    });
+
+    test('does not touch the timeline -- the caller owns event ids', () {
+      final updated = _case().withInformation('a', 'javob', at: DateTime(2026, 1, 2));
+
+      expect(updated.timeline.events, isEmpty);
+    });
+  });
+
   group('Case.toString', () {
     test('never includes the raw problemSummary', () {
       final case_ = _case(problemSummary: 'juda maxfiy shaxsiy tafsilot');
 
       expect(case_.toString().contains('juda maxfiy shaxsiy tafsilot'), isFalse);
+    });
+
+    test('never includes collected answer values', () {
+      final case_ = _case().withInformation(
+        'complaint_target',
+        'maxfiy javob matni',
+        at: DateTime(2026, 1, 2),
+      );
+
+      expect(case_.toString().contains('maxfiy javob matni'), isFalse);
     });
   });
 

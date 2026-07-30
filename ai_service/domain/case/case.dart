@@ -1,3 +1,4 @@
+import '../workflow/collected_information.dart';
 import 'case_category.dart';
 import 'case_exceptions.dart';
 import 'case_priority.dart';
@@ -37,6 +38,7 @@ class Case {
     required this.timeline,
     required this.createdAt,
     required this.updatedAt,
+    this.collectedInformation = const CollectedInformation(),
   });
 
   final String id;
@@ -71,6 +73,21 @@ class Case {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Aniqlashtiruvchi savollarga berilgan TUZILMALI javoblar
+  /// (`InformationRequirement.id` → javob) -- Module 5, Phase 5C
+  /// qo'shimchasi.
+  ///
+  /// **Nega `CaseTimeline`ning o'zi yetarli emas:** timeline --
+  /// XRONOLOGIK audit izi ("nima bo'ldi"), progress hisoblash uchun
+  /// esa JORIY holat kerak ("hozir nima to'plangan") -- javob
+  /// tuzatilganda timeline'da ikkala yozuv ham qoladi, joriy qiymat
+  /// esa bitta bo'lishi shart. Ikkalasi ATAYLAB alohida: biri
+  /// o'chirilmaydigan tarix, ikkinchisi -- ustiga yoziladigan holat.
+  ///
+  /// Standart qiymat bo'sh -- Phase 5B'da yaratilgan chaqiruv
+  /// joylari o'zgarishsiz ishlayveradi.
+  final CollectedInformation collectedInformation;
+
   bool get isTerminal => status.isTerminal;
 
   /// Yangi holatga **yangi** nusxa bilan o'tadi -- `AIConversation.close()`
@@ -104,7 +121,30 @@ class Case {
     return _copyWith(timeline: timeline.appendEvent(event), updatedAt: event.occurredAt);
   }
 
-  Case _copyWith({CaseStatus? status, CaseTimeline? timeline, required DateTime updatedAt}) {
+  /// Bitta ma'lumot bo'lagini yozadi/ustiga yozadi va **yangi** nusxa
+  /// qaytaradi (Module 5, Phase 5C).
+  ///
+  /// Bo'lakning shu toifa uchun HAQIQIY ekanligi bu yerda
+  /// TEKSHIRILMAYDI -- katalog (`InformationRequirementCatalog`)
+  /// domenning bu qismiga ATAYLAB olib kirilmaydi (entity "aqlsiz",
+  /// tekshiruv yuqori qatlamda -- `RecordCaseInformationUseCase`,
+  /// `GetCaseUseCase`ning egalik tekshiruvi bilan bir xil qatlamlash).
+  ///
+  /// Timeline yozuvi bu yerda qo'shilmaydi -- [appendTimelineEvent]
+  /// bilan bir xil sabab (hodisa ID'si chaqiruvchiniki).
+  Case withInformation(String requirementId, String value, {required DateTime at}) {
+    return _copyWith(
+      collectedInformation: collectedInformation.withEntry(requirementId, value),
+      updatedAt: at,
+    );
+  }
+
+  Case _copyWith({
+    CaseStatus? status,
+    CaseTimeline? timeline,
+    CollectedInformation? collectedInformation,
+    required DateTime updatedAt,
+  }) {
     return Case(
       id: id,
       userId: userId,
@@ -116,6 +156,7 @@ class Case {
       timeline: timeline ?? this.timeline,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      collectedInformation: collectedInformation ?? this.collectedInformation,
     );
   }
 
@@ -132,7 +173,8 @@ class Case {
             other.problemSummary == problemSummary &&
             other.timeline == timeline &&
             other.createdAt == createdAt &&
-            other.updatedAt == updatedAt);
+            other.updatedAt == updatedAt &&
+            other.collectedInformation == collectedInformation);
   }
 
   @override
@@ -147,13 +189,17 @@ class Case {
     timeline,
     createdAt,
     updatedAt,
+    collectedInformation,
   );
 
   /// **Xavfsizlik:** `problemSummary` (sezgir bo'lishi mumkin bo'lgan
   /// foydalanuvchi matni) ATAYLAB chiqarilmagan -- talab: "No sensitive
   /// information in domain logs". `AIBackendCredential.toString()`
   /// (Module 4, Phase 4B) tokenni maskalagani bilan bir xil ehtiyotkorlik.
+  /// `collectedInformation` -- faqat SONI chiqariladi (javob matnlari
+  /// hech qachon emas, `collected_information.dart`ga qarang).
   @override
   String toString() =>
-      'Case(id: $id, category: $category, status: $status, priority: $priority)';
+      'Case(id: $id, category: $category, status: $status, priority: $priority, '
+      'information: ${collectedInformation.filledCount} filled)';
 }
