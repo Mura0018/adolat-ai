@@ -1,109 +1,166 @@
 # Adolat AI — Loyiha Auditi
 
-**Sana:** 2026-07-26
+**Sana:** 2026-07-30
 **Auditor:** Claude Code (avtomatik audit)
-**Ko'lam:** Repozitoriyadagi barcha hujjatlar (`README.md`, `docs/*.md`, har bir papkadagi `README.md`) va barcha `.dart`/konfiguratsiya fayllari o'qib chiqildi. Bu **faqat audit** — hech qanday fayl o'zgartirilmadi yoki qo'shilmadi (ushbu hisobot fayli bundan mustasno).
+**Holat:** Module 5, Phase 5C (AI Assistance Workflow Foundation) yakunlangan — commit `2eab9a3`, GitHub Actions yashil.
+**Oldingi audit:** 2026-07-26 (skeleton bosqichi, 79/100) — quyidagi "Oldingi audit topilmalari holati" bo'limiga qarang.
+
+**Ko'lam:** Repozitoriyaning joriy holati — 46 commit, `lib/` (159 fayl / 14 673 qator), `ai_service/` (131 fayl / 7 821 qator), `test/` (71 fayl / 6 656 qator), 5 ta Supabase migratsiyasi, 18 ta hujjat va 6 ta ADR. Bu **faqat audit** — ushbu hisobot fayli va `docs/ACTION_PLAN.md`dagi yangi topilma yozuvlaridan boshqa hech qanday fayl o'zgartirilmadi.
 
 ## Metodologiya
 
-Quyidagi fayllar to'liq o'qildi:
+Baholash **tekshirilgan dalilga** tayanadi, hujjatdagi da'voga emas. Har bir band uchun:
 
-- `README.md`, `docs/architecture.md`, `docs/folder_structure.md`, `docs/setup.md`
-- `pubspec.yaml`, `analysis_options.yaml`, `l10n.yaml`, `.gitignore`
-- `lib/main.dart`, `lib/app.dart`
-- `lib/core/config/env_config.dart`
-- `lib/services/network/dio_client.dart`, `lib/services/supabase/supabase_client.dart`, `lib/services/secure_storage/secure_storage_service.dart`
-- `lib/router/app_router.dart`, `lib/router/route_paths.dart`
-- `lib/theme/app_theme.dart`, `lib/theme/app_colors.dart`, `lib/theme/app_typography.dart`
-- `lib/localization/app_uz.arb`, `lib/localization/app_en.arb`
-- Har bir papkadagi (`core/`, `features/`, `shared/`, `services/`, `models/`, `widgets/`) `README.md` fayllari
+- kod bevosita o'qildi yoki `grep` bilan tekshirildi (masalan `kDebugMode` mavjudligi, import turlari, test taqsimoti);
+- `flutter analyze` va `flutter test` haqiqatan ishga tushirildi (natijalar quyida);
+- hujjatdagi tasdiq (masalan "RLS joriy etilgan") migratsiya fayllari bilan solishtirildi.
 
-Loyiha hozircha **skeleton bosqichida** — biznes logika yo'q. Baholash shu kontekstda, ya'ni "keyingi rivojlanish uchun poydevor qanchalik puxta" nuqtai nazaridan qilindi.
+**Muhim o'zgarish — baholash mezoni yangilandi.** 2026-07-26 auditi biznes logikasi YO'Q skeleton uchun tuzilgan edi (5 bo'lim: arxitektura / papka / nomlash / xavfsizlik / kengaytirish). Bugungi loyihada 22 000+ qator kod bor, shuning uchun **test va sifat darvozasi** hamda **hujjatlashtirish** alohida bo'lim sifatida qo'shildi, "papka" va "nomlash" esa bitta bo'limga birlashtirildi. Shu sababli **79 → 80 taqqoslash to'g'ridan-to'g'ri emas** — bu boshqa o'lchov chizg'ichi, ikkalasi ham 100 ballik, lekin bo'limlar boshqacha.
+
+---
+
+## Bajarilgan modullar
+
+`docs/ROADMAP.md`dagi rasmiy "Bosqich" tizimi va amaliy qurilish tartibi farq qiladi (ROADMAP, "Joriy amalga oshirish holati" bo'limi buni hujjatlashtiradi). Quyida **haqiqatan commit qilingan** ish:
+
+| Modul / Bosqich | Mazmuni | Commit | Holat |
+|---|---|---|---|
+| Bosqich 0 | Hujjatlash (vision, arxitektura, DB, xavfsizlik, UI, roadmap) + Dart skeleti | `c6a1c0d`–`4eb9150` | ✅ Yakunlangan |
+| Backend poydevori | 5 ta migratsiya: sxema, RLS siyosatlari, Storage, auth trigger, avtorizatsiya markazlashtirish | `bd154a4`–`568271b` | ✅ Yakunlangan |
+| Bosqich 2/3 (UI qismi) | `appeals` + `disputes` Clean Architecture 3 qatlami | `542f9cf` | ✅ Yakunlangan |
+| Module 1–3 (auth) | Domain → data → presentation, GoRouter auth guard, rolga asoslangan navigatsiya | `9256018`, `da84cca`, `2ac40bd`, `8902849` | ✅ Yakunlangan |
+| Module 4, Phase 1–2C | AI Service poydevori: entity'lar, suhbat yadrosi, context engine, orkestratsiya/retry/xatolik | `79b8798`–`5fef853` | ✅ Yakunlangan |
+| Module 4, Phase 3A–3B | Protokol (simli shartnoma) + gateway (auth/dispatch/timeout/transport) | `4b65564`, `b527bd2` | ✅ Yakunlangan |
+| Module 4, Phase 4A | Klient integratsiya poydevori (`lib/core/ai_client/`) | `3c5d525` | ✅ Yakunlangan |
+| Module 4, Phase 4B–4C | Backend kontrakti (kvota/rate-limit/persistensiya/fayl) + ijro zanjiriga ulanish | `1aa90cb`, `10955b8` | ✅ Yakunlangan |
+| Module 5, Phase 5A | AI konfiguratsiya va boshqaruv (provayder/limit/xarajat, kalitsiz) | `3bb8758` | ✅ Yakunlangan |
+| Module 5, Phase 5B | Case va suhbat poydevori (lifecycle, intake, timeline) | `c6ebc5b` | ✅ Yakunlangan |
+| **Module 5, Phase 5C** | **Yordam oqimi: aniqlashtirish → to'liqlik → tavsiya → tartibli reja → progress** | **`2eab9a3`** | ✅ **Yakunlangan** |
+
+**Module 5 (5A–5C) yakuniy holati:** AI qatlamining butun poydevori — konfiguratsiya, ish (case) modeli va yordam oqimi — qurilgan va 371 test bilan qoplangan. Hech qanday haqiqiy AI provayderi, API kaliti yoki huquqiy xulosa mantig'i yo'q; bularning hammasi ataylab almashtiriladigan chegaralar ortida qoldirilgan.
 
 ---
 
 ## 1. Arxitektura
 
-**Yondashuv:** Feature-first + Clean Architecture (`data` / `domain` / `presentation`), `docs/architecture.md`da to'liq tushuntirilgan. Bog'liqlik yo'nalishi to'g'ri hujjatlashtirilgan: `presentation → domain ← data`.
-
 **Kuchli tomonlar:**
-- Qatlamlar orasidagi mas'uliyat chegarasi aniq (domain sof Dart, tashqi paketlarga bog'liq emas)
-- Xatolik boshqaruvi konventsiyasi (`Exception → Failure`) oldindan belgilangan
-- Riverpod orqali DI/holat boshqaruvi izchil tanlangan
+
+- Clean Architecture 6 ta feature'da (`auth`, `appeals`, `disputes`, `ai_analyses`, `attachments`, `legal_reference`) izchil qo'llangan — `data`/`domain`/`presentation` chegarasi hech qayerda buzilmagan.
+- `ai_service/`ning `lib/`dan mustaqilligi **avtomatik test bilan** majburlangan (`test/ai_service/architecture_boundary_test.dart`) — bu chegara endi kod ko'rib chiqish intizomiga emas, CI'ga tayanadi.
+- Module 5, Phase 5C xuddi shu yondashuvni kengaytirdi: `workflow_provider_independence_test.dart` yordam oqimi qatlamiga provayder/gateway/protokol/kalit kirib kelishini bloklaydi.
+- Almashtirish nuqtalari aniq va hujjatlashtirilgan (`AIProviderAdapter`, `CaseIntakeAssistant`, `RecommendationEngine`, `InformationCompletenessEvaluator`) — haqiqiy AI kelganda chaqiruvchi kod o'zgarmaydi.
+- `Failure` sealed union (`lib/core/error/failure.dart`) va `describeErrorForUser()` zanjiri qurilgan — 2026-07-26 auditidagi bo'shliq yopilgan.
 
 **Aniqlangan bo'shliqlar:**
-- `core/error/` papkasida haqiqiy `Failure` bazaviy klassi hali yo'q — faqat `docs/architecture.md`da misolda tilga olingan. Birinchi feature yozuvchisi buni noldan yaratishga majbur bo'ladi, bu konvensiyadan chetga chiqish xavfini oshiradi.
-- Markazlashgan DI "composition root" yo'q (masalan `core/di/`) — providerlar `services/` ichida tarqoq e'lon qilingan. Kichik loyihada muammo emas, lekin feature soni oshganda providerlarni bir joydan ko'rib chiqish qiyinlashadi.
-- `app_router.dart`da auth guard/redirect strukturasi yo'q (kutilgan holat, chunki auth feature hali yo'q, lekin kelgusida qo'shilishi rejalashtirilishi kerak).
-- `main.dart`da global xatolik ushlash (`FlutterError.onError`, `PlatformDispatcher.instance.onError`) ulanmagan — crash-reporting integratsiyasi uchun tayyor joy yo'q.
-- `pubspec.yaml`dagi `sdk: '>=3.5.0 <4.0.0'` — Flutter SDK bu muhitda o'rnatilmagani sababli taxminiy qiymat; birinchi `flutter pub get`dan oldin haqiqiy SDK versiyasiga moslab tekshirish kerak.
 
-**Baho: 21/25**
+1. **Offline-First umuman qurilmagan.** `docs/ROADMAP.md` buni "muzokara qilinmaydigan (non-negotiable) minimal talab" deb belgilaydi (Release Criteria), lekin `lib/`da na Local Storage, na Sync Engine, na Network State Handling mavjud. Bu rejalashtirilgan tartibga mos (Bosqich 4), lekin MVP uchun eng katta ochiq arxitektura bloki.
+2. **`lib/`da markazlashgan DI "composition root" yo'q** (`lib/core/di/` mavjud emas) — providerlar `services/` va feature'lar ichida tarqoq. Qiziq holat: `ai_service/di/ai_service_locator.dart` mavjud, ya'ni naqsh loyihada allaqachon bor, lekin ilova tomonida qo'llanmagan.
+3. **`main.dart`da global xatolik ushlash yo'q** — `FlutterError.onError` va `PlatformDispatcher.instance.onError` ulanmagan (2026-07-26 auditidan beri o'zgarmagan). Crash-reporting uchun tayyor joy yo'q.
+
+**Baho: 22/25**
 
 ---
 
-## 2. Papkalar va fayl tuzilishi
+## 2. Xavfsizlik
 
 **Kuchli tomonlar:**
-- So'ralgan barcha papkalar (`core, features, shared, services, models, widgets, theme, router, localization, assets, docs`) mavjud va har birida vazifasini tushuntiruvchi `README.md` bor.
-- `assets/` va `docs/` to'g'ri holda repo ildizida (Flutter konventsiyasiga mos), `lib/` ichidagilar Dart kod papkalari.
 
-**Aniqlangan bo'shliqlar:**
-- `lib/models/` va `lib/shared/` orasidagi chegara ba'zida noaniq bo'lishi mumkin (ikkalasi ham "bir nechta feature uchun umumiy" narsalarni saqlaydi) — README'larda farq tushuntirilgan, lekin amalda intizomni saqlash jamoa kattalashganda qiyinlashishi mumkin.
-- `.gitignore`da `.env.example` uchun istisno (`!.env.example`) bor, lekin loyiha `.env` fayldan emas, `--dart-define`dan foydalanadi (`docs/setup.md`, 6-band). Bu ikki yondashuv orasida nomuvofiqlik — yo `.env.example` namunasi qo'shilishi, yoki gitignoredagi shu qator olib tashlanishi kerak.
-- Test uchun namuna struktura (`test/features/...`) hali yaratilmagan — bu qasddan (biznes logika yo'q), lekin birinchi feature qo'shilganda test papkasi qanday shakllanishi aniq emas.
+- **RLS to'liq joriy etilgan** — 5 ta migratsiya, barcha 13 jadvalda yoqilgan, egalik tekshiruvi `is_admin()`/`owns_appeal()`/`is_dispute_party()`/`can_access_case()` funksiyalarida markazlashtirilgan (2026-07-26 auditidagi **eng kritik** topilma yopilgan).
+- Storage yo'llarida UUID formatini cast'dan oldin tekshiruvchi guard.
+- Hech qanday maxfiy qiymat kodda yo'q; `--dart-define` orqali; tokenlar `flutter_secure_storage`da.
+- `ai_service/` API kalitini **hech qachon** o'zida saqlamaydi — faqat `AICredentialReference` (ishora), yechish esa implementatsiyasiz interfeys ortida.
+- Sezgir ma'lumotni loglamaslik intizomi izchil: `AIBackendCredential`, `Case`, `CollectedInformation`ning `toString()`lari maskalaydi — har biri test bilan qulflangan.
+- Phase 5C'ning **beshta usecase'ining hammasi** `GetCaseUseCase` orqali egalik tekshiruvidan o'tadi; har biri uchun alohida test bor.
 
-**Baho: 17/20**
+**Aniqlangan bo'shliqlar (muhimlik tartibida):**
+
+1. 🔴 **`LogInterceptor` hamon `kDebugMode` bilan himoyalanmagan** (`lib/services/network/dio_client.dart:21`). Bu:
+   - `docs/DEVELOPMENT_RULES.md`, **11-bandning bevosita buzilishi** ("Release build'da debug loglar ishlamasligi shart");
+   - `docs/ROADMAP.md`, Phase 1 Deliverables ro'yxatidagi **bajarilmagan band** ("Tuzatilgan `dio_client.dart` — `LogInterceptor` faqat `kDebugMode`da faol");
+   - 2026-07-26 auditida **#1 xavfsizlik topilmasi** sifatida qayd etilgan va 4 kun davomida yopilmagan.
+
+   Tana loglanmaydi (`requestBody: false, responseBody: false`), shuning uchun bu Critical emas, lekin so'rov URL'lari va sarlavhalari release build'da ham konsolga chiqadi. **Reliz bloki sifatida qaralishi kerak.**
+2. 🟠 **`.env.example` hamon yo'q** — yangi dasturchi kerakli environment o'zgaruvchilarini faqat `env_config.dart`ni o'qib biladi. `.gitignore`dagi `!.env.example` istisnosi hanuz hech narsaga ishora qilmaydi.
+3. 🟠 **ADR-001 (Data Residency) — Bloklangan.** O'zbekiston shaxsiy ma'lumotlar qonuni vs Supabase hosting masalasi tashqi huquqiy tasdiqlashni kutmoqda. Bu `docs/adr/README.md`dagi Bosqich 6 gate'ini **qondirilmagan** holda ushlab turadi. Claude Code buni hal qila olmaydi — loyiha egasining vazifasi.
+4. 🟡 Sertifikat pinning (certificate pinning) qarori hamon qabul qilinmagan.
+
+**Baho: 15/20**
 
 ---
 
-## 3. Nomlash konventsiyalari
+## 3. Test va sifat darvozasi
+
+*(Yangi bo'lim — 2026-07-26 auditida mavjud emas edi, chunki o'shanda kod ham, test ham yo'q edi.)*
 
 **Kuchli tomonlar:**
-- Fayllar izchil `snake_case.dart`, klasslar `PascalCase`, providerlar `camelCaseProvider` shaklida.
-- Statik-only klasslar uchun zamonaviy Dart 3 patterni (`abstract final class`) izchil qo'llangan (`EnvConfig`, `AppTheme`, `AppColors`, `SupabaseService`, `RoutePaths`).
-- Provider nomlanishi klass nomiga mos (`SecureStorageService` → `secureStorageServiceProvider`).
+
+- **371 test, hammasi yashil**; CI (`.github/workflows/ci.yml`) har `push`/`pull_request`da `flutter analyze` + `flutter test` ishga tushiradi va Module 5C commitida haqiqiy yashil run bilan tasdiqlangan.
+- Testlar shunchaki "qamrov" emas — **arxitektura invariantlarini qulflaydi**: Flutter/`lib` chegarasi, provayder mustaqilligi, kalit ishlatilmasligi, sezgir ma'lumot loglanmasligi, tartib invariantlari.
+- `ai_service/` deyarli to'liq qoplangan (61 test fayli, 131 manba fayliga).
 
 **Aniqlangan bo'shliqlar:**
-- Barcha import'lar nisbiy yo'l (`../../core/config/env_config.dart`) orqali yozilgan, `package:adolat_ai/...` absolyut import ishlatilmagan. Loyiha kattalashganda fayllarni ko'chirish/refaktoring qilishda nisbiy importlar ko'proq xato beradi — enterprise Dart loyihalarida odatda absolyut import afzal ko'riladi.
-- `route_paths.dart` boshqa `*_service.dart`/`*_client.dart` fayllaridan farqli, "Paths" so'zi bilan tugaydi — mazmunan to'g'ri, lekin loyiha bo'yicha fayl-suffiks konventsiyasi (`*_service`, `*_client`, `*_config`, `*_paths`) hech qayerda yagona jadval sifatida hujjatlashtirilmagan.
+
+1. 🔴 **`lib/features/` uchun bitta ham test yo'q** — 108 fayl feature kodi (auth, appeals, disputes, attachments va h.k.) **0 ta test** bilan. Barcha 371 test `ai_service/` (foydalanuvchiga yetkazilmaydigan backend poydevori) va `lib/core/`ga tegishli. Ya'ni **haqiqatan ilovada ishlaydigan kod avtomatik tekshirilmaydi**; sifat darvozasi eng muhim joyda ochiq.
+2. 🟠 **Widget/integration test umuman yo'q** — "No Dead End Rule" (`DEVELOPMENT_RULES.md`, 17–19-band) va auth guard xatti-harakati faqat qo'lda tekshirilishi mumkin.
+3. 🟡 Test qamrovi o'lchanmaydi (`--coverage` CI'da ishlatilmaydi) — regressiya qayerda paydo bo'lishini oldindan bilish qiyin.
+
+**Baho: 13/20**
+
+---
+
+## 4. Kengaytirish imkoniyati
+
+**Kuchli tomonlar:**
+
+- Namunaviy (reference) feature muammosi yopilgan — `auth` to'liq uch qatlamli jonli namuna, `appeals`/`disputes` uni takrorlaydi.
+- AI qatlami provayderdan mustaqil: yangi provayder qo'shish uchun faqat `AIProviderAdapter` implementatsiyasi kerak (`ADR-005`).
+- Phase 5C mazmun (savol matni, tavsiya) bilan tuzilmani (tartib, invariant) ajratdi — haqiqiy AI kelganda faqat mazmun manbai almashadi.
+- DRY intizomi kuzatilmoqda: 5C'da `MockCaseIntakeAssistant` savollari umumiy katalogga ko'chirildi, ikkita bir xil enum o'rniga bitta `NextStepKind` ishlatildi.
+
+**Aniqlangan bo'shliqlar:**
+
+1. 🟠 **Barcha 87 fayl nisbiy import ishlatadi**, `package:adolat_ai/...` absolyut import **hech qayerda** yo'q (2026-07-26 auditidan beri o'zgarmagan). Loyiha 159 faylga o'sgani sababli, fayl ko'chirish endi ancha qimmatroq operatsiyaga aylandi.
+2. 🟠 Ro'yxat endpointlarida pagination yo'q (`listMine()` va h.k.) — Zero-Regret Auditda qayd etilgan, hanuz ochiq.
+3. 🟡 `ai_service/` uchun ishga tushirish muhiti (Edge Function yoki alohida Dart xizmati) hali tanlanmagan — 7 821 qator kod hozircha **hech qayerda ishlamaydi**, faqat testda. Bu ataylab (`ADR-006`), lekin qaror qancha kechiksa, kontrakt haqiqatga mos kelmasligi xavfi shuncha oshadi.
 
 **Baho: 12/15**
 
 ---
 
-## 4. Xavfsizlik
+## 5. Hujjatlashtirish
+
+*(Yangi bo'lim — hujjat sifati loyihaning eng kuchli tomoni bo'lgani uchun alohida o'lchanadi.)*
 
 **Kuchli tomonlar:**
-- Hech qanday maxfiy qiymat (Supabase kaliti, API manzili) kodga qattiq yozilmagan — barchasi `String.fromEnvironment` orqali build vaqtida beriladi.
-- `.gitignore` `.env`, `.env.*` fayllarni to'g'ri istisno qiladi.
-- Maxfiy ma'lumotlar uchun `SharedPreferences` emas, platforma darajasidagi xavfsiz xotira (`flutter_secure_storage`) tanlangan.
-- `analysis_options.yaml`da `avoid_print: true` — production kodda tasodifiy `print()` orqali ma'lumot sizib chiqishining oldini oladi.
 
-**Aniqlangan bo'shliqlar (muhimlik tartibida):**
-1. **`dio_client.dart`dagi `LogInterceptor` build rejimidan qat'i nazar doimo faol** (`kDebugMode` tekshiruvi yo'q). Bu hozircha so'rov/javob tanasini logga yozmaydi (`requestBody: false, responseBody: false`), lekin so'rov URL'lari va sarlavhalarini konsolga chiqaradi — release build'da ham. Huquqiy/shaxsiy ma'lumotlar bilan ishlaydigan ilova uchun bu logging release'da butunlay o'chirilishi tavsiya etiladi.
-2. **Supabase Row Level Security (RLS) siyosati hech qayerda hujjatlashtirilmagan.** Supabase'da `anon key` mijoz tomonida ochiq bo'ladi (bu me'yor), lekin xavfsizlik butunlay backend'dagi RLS qoidalariga bog'liq bo'ladi. Fuqarolarning huquqiy murojaatlari kabi nozik ma'lumotlar bilan ishlaydigan platforma uchun bu **eng kritik xavfsizlik talabi**, va hozircha hech bir hujjatda tilga olinmagan.
-3. `.env.example` namunasi mavjud emas (yuqoridagi 2-bo'limdagi topilma bilan bog'liq) — yangi dasturchi qaysi environment o'zgaruvchilari kerakligini faqat `env_config.dart` kodini o'qib bilishi mumkin.
-4. Sertifikat pinning (certificate pinning) yoki boshqa transport xavfsizligi choralari hujjatlashtirilmagan — ixtiyoriy, lekin huquqiy ma'lumotlar uchun ko'rib chiqilishi mumkin.
+- 18 ta hujjat + 6 ta ADR; `docs/AI_ARCHITECTURE.md` yolg'iz o'zi 1 400+ qator, diagrammalar va talab→kod xaritalari bilan.
+- Har bir arxitektura qarori **sababi bilan** yozilgan ("nega Freezed emas", "nega interfeys", "nega ikkita enum emas") — bu kod izohlarida ham izchil davom etadi.
+- `docs/ACTION_PLAN.md` 8 ta audit manbaidan topilmalarni kuzatadi, yozuvlar o'chirilmaydi.
+- Hujjat-kod muvofiqligi faol saqlanadi (`b4f3024`, `02516df` — eskirgan hujjatlarni tuzatish uchun maxsus commitlar).
 
-**Baho: 14/20**
+**Aniqlangan bo'shliqlar:**
+
+1. 🟠 **`PROJECT_AUDIT.md`ning o'zi 4 kun eskirgan edi** — 2026-07-26 skeleton auditini ko'rsatib turardi, holbuki oradan 30+ commit va butun Module 4/5 o'tgan. Ushbu yangilanish shu bo'shliqni yopadi.
+2. 🟡 `docs/ROADMAP.md`, "Joriy amalga oshirish holati" bo'limi 2026-07-28 sanasida qotgan — Module 4/5 (AI Service poydevori) unda aks etmagan.
+3. 🟡 Fayl-suffiks konventsiyasi (`*_service`, `*_client`, `*_usecase`, `*_repository`) hech qayerda yagona jadval sifatida yozilmagan.
+
+**Baho: 9/10**
 
 ---
 
-## 5. Kengaytirish imkoniyati
+## 6. Papka tuzilishi va nomlash
 
 **Kuchli tomonlar:**
-- Feature qo'shish konventsiyasi (`data/domain/presentation`) aniq va misol bilan tushuntirilgan.
-- Marshrutlash, lokalizatsiya va DI markazlashgan — yangi feature qo'shishda "qayerga qo'shish kerak" degan savol qolmaydi.
-- Riverpod tanlovi test qilish va mock qilishni osonlashtiradi (providerlarni `overrideWith` bilan almashtirish mumkin).
+
+- Nomlash izchil: `snake_case.dart`, `PascalCase`, `camelCaseProvider`; `abstract final class` statik-only klasslar uchun.
+- `ai_service/` ildizda, `lib/`dan tashqarida — sabab hujjatlashtirilgan va test bilan majburlangan.
+- 46 commitda konvensional commit uslubi (`feat(scope):`, `fix(scope):`, `docs:`) buzilmagan.
 
 **Aniqlangan bo'shliqlar:**
-- **Namunaviy (reference) feature yo'q.** Konventsiya faqat `docs/architecture.md`dagi matn va bitta kod bo'lagi misolida tushuntirilgan — haqiqiy `features/<nom>/` papka-fayl skeleti (bo'sh, lekin to'liq qatlamlar bilan) mavjud emas. Bu birinchi feature yozuvchisi uchun talqin qilish xavfini oshiradi.
-- CI/CD konfiguratsiyasi (`flutter analyze`/`flutter test` avtomatik ishga tushirish) yo'q — hujjatlashtirilgan konventsiyalarni hech narsa avtomatik tekshirmaydi.
-- `test/` papkasida na birorta namuna test bor (qasddan, biznes logika yo'qligi sababli) — lekin bu birinchi feature bilan birga "qanday test yozish kerak" savolini ham qoldiradi.
-- `CHANGELOG.md` yo'q — skeleton evolyutsiyasini kuzatish uchun foydali bo'lardi.
 
-**Baho: 15/20**
+1. 🟡 `lib/models/` va `lib/shared/` orasidagi chegara hanuz nazariy (2026-07-26 topilmasi) — amalda ikkalasi ham kam ishlatilgani uchun muammo yuzaga chiqmagan.
+
+**Baho: 9/10**
 
 ---
 
@@ -111,17 +168,82 @@ Loyiha hozircha **skeleton bosqichida** — biznes logika yo'q. Baholash shu kon
 
 | Bo'lim | Ball | Maksimal |
 |---|---:|---:|
-| Arxitektura | 21 | 25 |
-| Papkalar va fayl tuzilishi | 17 | 20 |
-| Nomlash konventsiyalari | 12 | 15 |
-| Xavfsizlik | 14 | 20 |
-| Kengaytirish imkoniyati | 15 | 20 |
-| **Jami** | **79** | **100** |
+| 1. Arxitektura | 22 | 25 |
+| 2. Xavfsizlik | 15 | 20 |
+| 3. Test va sifat darvozasi | 13 | 20 |
+| 4. Kengaytirish imkoniyati | 12 | 15 |
+| 5. Hujjatlashtirish | 9 | 10 |
+| 6. Papka tuzilishi va nomlash | 9 | 10 |
+| **Jami** | **80** | **100** |
 
 ### Talqin
 
-**79/100 — "Yaxshi poydevor, lekin production'ga chiqishdan oldin bir nechta muhim bo'shliq yopilishi kerak."**
+**80/100 — "Poydevor va hujjatlashtirish darajasi yuqori; ilova qatlamining test qamrovi va bitta ochiq reliz bloki asosiy tiyilish nuqtasi."**
 
-Skeleton darajasida struktura, hujjatlash va nomlash sifati yuqori. Eng muhim ikki band — **(1) Supabase RLS siyosatini hujjatlashtirish/joriy etish** va **(2) `LogInterceptor`ni faqat debug rejimida yoqish** — biznes logika yozilishidan oldin, ya'ni birinchi haqiqiy feature qo'shilgunga qadar hal qilinishi tavsiya etiladi, chunki ular keyinchalik butun kod bazasiga tarqalib ketadigan naqshlarga aylanadi.
+Loyiha 2026-07-26 dagi skeletondan 22 000+ qatorli, CI bilan himoyalangan, ADR asosida boshqariladigan kod bazasiga o'sdi. Eng kuchli tomoni — **qaror sababi hujjatlashtiriladi va arxitektura chegaralari test bilan qulflanadi**; bu naqsh Module 4'dan 5C'gacha buzilmasdan davom etdi.
 
-Bu audit **faqat kuzatuv** hisoblanadi — yuqoridagi hech bir topilma bo'yicha kod o'zgartirilmadi.
+Uchta band keyingi ishdan **oldin** hal qilinishi tavsiya etiladi:
+
+1. **`LogInterceptor`ni `kDebugMode` bilan o'rash** — 3 qatorlik tuzatish, lekin `DEVELOPMENT_RULES.md` 11-bandining ochiq buzilishi va Phase 1'dan qolgan qarz.
+2. **`lib/features/` uchun test yozishni boshlash** — hozirgi 371 test ta'sirchan ko'rinadi, lekin ular foydalanuvchi ko'radigan kodning **hech bir qismini** qoplamaydi. Bu nomutanosiblik uzoq davom etsa, sifat darvozasi soxta ishonch bera boshlaydi.
+3. **ADR-001 bo'yicha huquqiy javobni so'rash** — bu Claude Code hal qila olmaydigan yagona bloker va u Bosqich 6 gate'ini ushlab turibdi.
+
+### Reliz tayyorligi
+
+`docs/ROADMAP.md`, "Release Criteria" bo'yicha:
+
+| Mezon | Holat |
+|---|---|
+| Funksional to'liqlik (2 oqim × 3 rol) | ⚠️ Qisman — appeals/disputes UI bor, admin paneli yo'q |
+| Offline-first | ❌ Boshlanmagan (Bosqich 4) |
+| Xavfsizlik audit talabi | ⚠️ 1 ta ochiq topilma (log leak) |
+| Audit balli ≥ 95 | ❌ 80/100 |
+| RLS to'liq qamrovi | ✅ 13/13 jadval |
+| No Dead End Rule | ⚠️ Qo'lda tekshirilmagan, avtomatik testi yo'q |
+| Hujjat-kod muvofiqligi | ✅ (ushbu yangilanishdan keyin) |
+| Barcha topilmalar yopilgan | ❌ ACTION_PLAN.md'da ochiq yozuvlar bor |
+
+**Xulosa: loyiha reliz nomzodi (M6) holatidan uzoq va rasmiy Bosqich 6'ni boshlashga tayyor emas** — Bosqich 4 (offline-first) va Bosqich 5 (admin/push) hali qurilmagan, ADR gate qondirilmagan.
+
+### Qolgan ishlar (ustuvorlik bo'yicha)
+
+| # | Ish | Ustuvorlik | Bog'liq |
+|---|---|---|---|
+| 1 | `LogInterceptor`ni debug rejimi bilan cheklash | High | `DEVELOPMENT_RULES.md` 11-band |
+| 2 | `lib/features/` uchun unit/widget testlar | High | Release Criteria, audit balli |
+| 3 | ADR-001 huquqiy tasdiqlash (loyiha egasi) | High | Bosqich 6 gate |
+| 4 | `ai_service/` uchun ishga tushirish muhitini tanlash va ulash | High | ADR-006, Bosqich 3 yakuni |
+| 5 | Bosqich 4 — Offline-First (Local Storage, Sync Engine, Conflict Resolution) | High | MVP majburiy talabi |
+| 6 | Bosqich 5 — Admin paneli va push xabarnomalar | Medium | M5 |
+| 7 | `.env.example` qo'shish | Medium | Onboarding |
+| 8 | Global xatolik ushlash (`FlutterError.onError`) | Medium | Crash-reporting |
+| 9 | Absolyut importlarga o'tish | Medium | Refaktoring xarajati |
+| 10 | Pagination (`listMine()` va h.k.) | Medium | Zero-Regret Audit |
+| 11 | `lib/core/di/` composition root | Low | Izchillik |
+| 12 | ADR-003/004/005 bo'yicha qaror | Low | Hozircha bloklamaydi |
+
+Ushbu auditda aniqlangan yangi topilmalar `docs/DEVELOPMENT_RULES.md`, 25-bandga muvofiq `docs/ACTION_PLAN.md`ga (9-bo'lim) yozildi.
+
+---
+
+## Oldingi audit topilmalari holati (2026-07-26 → 2026-07-30)
+
+| 2026-07-26 topilmasi | Holat |
+|---|---|
+| `core/error/`da `Failure` bazaviy klassi yo'q | ✅ Yopilgan — `failure.dart` + `failure_presentation.dart` |
+| Markazlashgan DI composition root yo'q | ⚠️ Qisman — `ai_service/di/` bor, `lib/` uchun hanuz yo'q |
+| `app_router.dart`da auth guard yo'q | ✅ Yopilgan — reaktiv guard (`authStateChangesProvider` + `refreshListenable`) |
+| `main.dart`da global xatolik ushlash yo'q | ❌ Ochiq |
+| `pubspec.yaml` SDK versiyasi taxminiy | ✅ Yopilgan — Flutter 3.44.8 bilan tekshirilgan, `pubspec.lock` commit qilingan |
+| Test namuna strukturasi yo'q | ⚠️ Qisman — 71 test fayli bor, lekin `test/features/` bo'sh |
+| `.env.example` yo'q / `.gitignore` nomuvofiqligi | ❌ Ochiq |
+| **`LogInterceptor` release'da ham faol** | ❌ **Ochiq — 4 kundan beri** |
+| **Supabase RLS hujjatlashtirilmagan/joriy etilmagan** | ✅ **Yopilgan** — 5 migratsiya, markazlashgan funksiyalar |
+| Sertifikat pinning hujjatlashtirilmagan | ❌ Ochiq |
+| Namunaviy (reference) feature yo'q | ✅ Yopilgan — `auth` |
+| CI/CD yo'q | ✅ Yopilgan — `.github/workflows/ci.yml`, yashil |
+| `CHANGELOG.md` yo'q | ❌ Ochiq (Low) |
+| Nisbiy importlar | ❌ Ochiq |
+| Fayl-suffiks konventsiyasi jadvali yo'q | ❌ Ochiq (Low) |
+
+**Yopilgan: 6 · Qisman: 2 · Ochiq: 7** — yopilganlar orasida o'sha auditning eng kritik ikki bandidan biri (RLS) bor; ikkinchisi (`LogInterceptor`) hamon ochiq.

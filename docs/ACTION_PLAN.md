@@ -137,6 +137,23 @@ Quyidagi jadvallar loyiha tarixida hozirgacha o'tkazilgan barcha audit va tekshi
 | 12 ta eski RLS siyosati hali yangi funksiyalarga o'tkazilmagan | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Xatti-harakat to'g'ri, faqat izchillik masalasi; shoshilinch emas. |
 | Bog'liqliklar versiyasi eskirgan (36 ta paket) | Medium | Open | Tayinlanmagan | 2026-07-28 | — | Oddiy texnik xizmat, shoshilinch emas. |
 
+### 9. Loyiha auditi qayta baholovi (Module 5 Phase 5C yakunida) — 2026-07-30
+
+**Manba:** `PROJECT_AUDIT.md` qayta baholovi (80/100), 2026-07-26 skeleton auditidan keyingi birinchi to'liq qayta ko'rib chiqish
+
+| Topilma | Ustuvorlik | Holati | Owner | Ochilgan | Yopilgan | Izoh |
+|---|---|---|---|---|---|---|
+| `LogInterceptor` release build'da ham faol (`lib/services/network/dio_client.dart:21`) — `kDebugMode` guard yo'q | High | Open | Tayinlanmagan | 2026-07-26 | — | `DEVELOPMENT_RULES.md` 11-bandining bevosita buzilishi va `ROADMAP.md` Phase 1 Deliverables'dagi bajarilmagan band. 2026-07-26 auditida #1 xavfsizlik topilmasi sifatida qayd etilgan, lekin o'shanda ACTION_PLAN.md'ga yozilmay qolgan — shu yozuv bilan rasman kuzatuvga olindi. Tana loglanmaydi, shuning uchun Critical emas. |
+| `lib/features/` uchun bitta ham avtomatik test yo'q (108 fayl / 0 test) | High | Open | Tayinlanmagan | 2026-07-30 | — | Barcha 371 test `ai_service/` va `lib/core/`ga tegishli — foydalanuvchi ko'radigan kod sifat darvozasidan o'tmaydi. Release Criteria'dagi "audit balli ≥ 95" shu sababli qondirilmaydi. |
+| Widget/integration test yo'q — "No Dead End Rule" avtomatik tekshirilmaydi | Medium | Open | Tayinlanmagan | 2026-07-30 | — | `DEVELOPMENT_RULES.md` 17–19-bandlari hozircha faqat qo'lda tekshirilishi mumkin. |
+| `ai_service/` (7 821 qator) uchun ishga tushirish muhiti hali tanlanmagan | High | Open | Tayinlanmagan | 2026-07-30 | — | ADR-006 doirasida; kod hozircha faqat testda ishlaydi. Qaror kechikkan sari kontrakt haqiqatga mos kelmaslik xavfi oshadi. |
+| `.env.example` yo'q; `.gitignore`dagi `!.env.example` istisnosi hech narsaga ishora qilmaydi | Medium | Open | Tayinlanmagan | 2026-07-26 | — | 2026-07-26 auditidan qolgan, ACTION_PLAN.md'ga endi yozildi. |
+| `main.dart`da global xatolik ushlash (`FlutterError.onError`) ulanmagan | Medium | Open | Tayinlanmagan | 2026-07-26 | — | Crash-reporting integratsiyasi uchun tayyor joy yo'q. |
+| Barcha 87 fayl nisbiy import ishlatadi, absolyut import hech qayerda yo'q | Medium | Open | Tayinlanmagan | 2026-07-26 | — | Loyiha 159 faylga o'sgani sababli refaktoring xarajati oshdi. |
+| `lib/`da markazlashgan DI composition root yo'q | Low | Open | Tayinlanmagan | 2026-07-26 | — | Naqsh loyihada bor (`ai_service/di/`), lekin ilova tomonida qo'llanmagan. |
+| `PROJECT_AUDIT.md` 4 kun eskirgan edi (skeleton holatini ko'rsatardi) | Medium | Done | Claude Code | 2026-07-30 | 2026-07-30 | Hujjat Module 5 Phase 5C holatiga to'liq yangilandi: bajarilgan modullar jadvali, yangilangan baholash mezoni (80/100), reliz tayyorligi jadvali, qolgan ishlar ro'yxati va oldingi topilmalar holati qo'shildi. |
+| `docs/ROADMAP.md`, "Joriy amalga oshirish holati" bo'limi 2026-07-28'da qotgan (Module 4/5 aks etmagan) | Low | Open | Tayinlanmagan | 2026-07-30 | — | Hujjat-kod muvofiqligi talabi (Release Criteria) uchun Bosqich 6'dan oldin yangilanishi kerak. |
+
 ## Empty template for future actions
 
 Yangi audit topilmasi qo'shishda quyidagi shablondan nusxa olib to'ldiring:
