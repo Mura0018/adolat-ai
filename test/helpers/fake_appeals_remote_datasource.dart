@@ -32,6 +32,7 @@ class FakeAppealsRemoteDataSource implements AppealsRemoteDataSource {
     required String title,
     required String bodyText,
     String? aiDraftText,
+    String? id,
   }) async {
     _record('createDraft', {
       'categoryId': categoryId,
@@ -39,6 +40,8 @@ class FakeAppealsRemoteDataSource implements AppealsRemoteDataSource {
       'title': title,
       'bodyText': bodyText,
       'aiDraftText': aiDraftText,
+      // ADR-009: klient bergan identifikator (berilmasa null).
+      'id': id,
     });
     if (throwOnAnyCall != null) throw throwOnAnyCall!;
     return _model;

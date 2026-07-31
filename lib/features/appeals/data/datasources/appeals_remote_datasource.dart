@@ -24,16 +24,29 @@ class AppealsRemoteDataSource {
     return id;
   }
 
+  /// [id] — **klient tomonda oldindan yaratilgan identifikator**
+  /// (`docs/adr/ADR-009-offline-identifier-strategy.md`, Qabul
+  /// qilingan 2026-07-31: UUID v7).
+  ///
+  /// Berilmasa, `id` ustuni server standartiga (`gen_random_uuid()`)
+  /// qoldiriladi — ya'ni bu parametr **ixtiyoriy va orqaga mos**:
+  /// mavjud chaqiruvchilar o'zgarishsiz ishlayveradi.
+  ///
+  /// Klient bergan qiymat RLS'ni chetlab o'tmaydi: `appeals_insert`
+  /// siyosati faqat `author_id = auth.uid()` ni tekshiradi va `id`ni
+  /// umuman cheklamaydi (`20260726000002_rls_policies.sql`).
   Future<AppealModel> createDraft({
     required String categoryId,
     required String recipientBodyId,
     required String title,
     required String bodyText,
     String? aiDraftText,
+    String? id,
   }) async {
     final row = await _client
         .from('appeals')
         .insert({
+          if (id != null) 'id': id,
           'author_id': _requireUserId,
           'category_id': categoryId,
           'recipient_body_id': recipientBodyId,
