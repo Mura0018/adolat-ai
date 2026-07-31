@@ -449,6 +449,109 @@ void main() {
     });
   });
 
+  group('bloklangan amalga bog\'liqlar kaskadi (Module 6C)', () {
+    test('ota-amal needsAttention bo\'lsa, bog\'liq amal ham chiqariladi', () async {
+      await queue.enqueue(_operation(id: 'record-op'));
+      await queue.enqueue(_operation(id: 'file-op', dependsOn: 'record-op'));
+
+      await engineWith([
+        _FakeHandler(outcome: const SyncPermanentFailure('validatsiya xatosi')),
+      ]).sync(trigger: SyncTrigger.appStart);
+
+      // Bularsiz `file-op` MANGU pending holida navbatda qolib,
+      // hech qayerda ko'rinmasdi.
+      final dependent = (await queue.getById('file-op'))!;
+      expect(dependent.status, PendingOperationStatus.needsAttention);
+      expect(dependent.lastError, isNotNull);
+    });
+
+    test('kaskad butun zanjir bo\'ylab ishlaydi (A -> B -> C)', () async {
+      await queue.enqueue(_operation(id: 'a'));
+      await queue.enqueue(_operation(id: 'b', dependsOn: 'a'));
+      await queue.enqueue(_operation(id: 'c', dependsOn: 'b'));
+
+      await engineWith([
+        _FakeHandler(outcome: const SyncPermanentFailure('xato')),
+      ]).sync(trigger: SyncTrigger.appStart);
+
+      expect((await queue.getById('b'))!.status, PendingOperationStatus.needsAttention);
+      expect((await queue.getById('c'))!.status, PendingOperationStatus.needsAttention);
+    });
+
+    test('muvaffaqiyatli ota-amal bog\'liqlarni bloklamaydi', () async {
+      await queue.enqueue(_operation(id: 'record-op'));
+      await queue.enqueue(_operation(id: 'file-op', dependsOn: 'record-op'));
+
+      await engineWith([_FakeHandler()]).sync(trigger: SyncTrigger.appStart);
+
+      expect((await queue.getById('file-op'))!.status, PendingOperationStatus.pending);
+    });
+
+    test('vaqtinchalik xatolik bog\'liqlarni bloklamaydi', () async {
+      // Faqat DOIMIY to'siq kaskadga sabab bo'ladi -- vaqtinchalik
+      // xatolikda ota-amal baribir qayta uriniladi.
+      await queue.enqueue(_operation(id: 'record-op'));
+      await queue.enqueue(_operation(id: 'file-op', dependsOn: 'record-op'));
+
+      await engineWith([
+        _FakeHandler(outcome: const SyncTransientFailure('tarmoq')),
+      ]).sync(trigger: SyncTrigger.appStart);
+
+      expect((await queue.getById('file-op'))!.status, PendingOperationStatus.pending);
+    });
+
+    test('foydalanuvchi retryNow bilan zanjirni qayta ishga tushira oladi', () async {
+      await queue.enqueue(_operation(id: 'record-op'));
+      await queue.enqueue(_operation(id: 'file-op', dependsOn: 'record-op'));
+      final handler = _FakeHandler(outcome: const SyncPermanentFailure('xato'));
+      final engine = engineWith([handler]);
+      await engine.sync(trigger: SyncTrigger.appStart);
+
+      // Foydalanuvchi muammoni tuzatdi va ikkalasini qayta yubordi.
+      await queue.retryNow('record-op');
+      await queue.retryNow('file-op');
+      handler.outcome = const SyncSuccess();
+      advance(const Duration(minutes: 1));
+      await engine.sync(trigger: SyncTrigger.manual);
+      await engine.sync(trigger: SyncTrigger.manual);
+
+      expect((await queue.getById('record-op'))!.status, PendingOperationStatus.completed);
+      expect((await queue.getById('file-op'))!.status, PendingOperationStatus.completed);
+    });
+  });
+
+  group('takroriy sikl (race) — Module 6C', () {
+    test('band dvigatel aniq belgi bilan javob qaytaradi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final engine = engineWith([_FakeHandler()]);
+
+      // Sikl ichida ikkinchi chaqiruv (handler orqali taqlid qilish
+      // o'rniga to'g'ridan-to'g'ri tekshiramiz): birinchi sikl
+      // tugagach `_isRunning` false bo'ladi, shuning uchun bu yerda
+      // faqat bayroqning MAVJUDLIGI va standart qiymati tekshiriladi.
+      final report = await engine.sync(trigger: SyncTrigger.appStart);
+
+      expect(report.skippedAlreadyRunning, isFalse);
+      expect(report.didNotRun, isFalse);
+    });
+
+    test('bir vaqtda ikkita sikl ishlamaydi va amal ikki marta yuborilmaydi', () async {
+      await queue.enqueue(_operation(id: 'op-1'));
+      final handler = _FakeHandler();
+      final engine = engineWith([handler]);
+
+      // Ikkala chaqiruv bir vaqtda boshlanadi.
+      final results = await Future.wait([
+        engine.sync(trigger: SyncTrigger.appStart),
+        engine.sync(trigger: SyncTrigger.manual),
+      ]);
+
+      // Amal ATIGI bir marta yuborilgan.
+      expect(handler.performedOperationIds, ['op-1']);
+      expect(results.where((r) => r.skippedAlreadyRunning), hasLength(1));
+    });
+  });
+
   group('bog\'liq amallar', () {
     test('bog\'liq amal, bog\'liqligi tugagandan keyingina yuboriladi', () async {
       await queue.enqueue(_operation(id: 'record-op'));

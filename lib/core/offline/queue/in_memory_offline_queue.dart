@@ -19,6 +19,33 @@ class InMemoryOfflineQueue implements OfflineQueue {
 
   @override
   Future<void> enqueue(PendingOperation operation) async {
+    final existing = _operations[operation.id];
+
+    // (2-qoida) Boshlangan yoki yakunlangan amal HECH QACHON ustiga
+    // yozilmaydi -- aks holda `inProgress` belgisi va urinishlar
+    // hisobi nolga qaytib, ayni damda yuborilayotgan amal ikkinchi
+    // marta yuborilishi mumkin edi (idempotentlik buzilishi).
+    if (existing != null && !existing.status.isSyncable) {
+      return;
+    }
+
+    // (3-qoida) Mantiqan bir xil, hali BOSHLANMAGAN amal yangisi
+    // bilan almashtiriladi -- oflaynda ketma-ket tahrirlar serverga
+    // beshta so'rov emas, bitta eng so'nggi holat bo'lib boradi.
+    final supersededIds = _operations.values
+        .where(
+          (candidate) =>
+              candidate.id != operation.id &&
+              candidate.status == PendingOperationStatus.pending &&
+              candidate.canBeSupersededBy(operation),
+        )
+        .map((candidate) => candidate.id)
+        .toList(growable: false);
+
+    for (final id in supersededIds) {
+      _operations.remove(id);
+    }
+
     // Mavjud kalit ustiga yozish tartibni O'ZGARTIRMAYDI (Dart Map
     // xatti-harakati) — qayta navbatga qo'yilgan amal navbat oxiriga
     // "sakramaydi", bu FIFO adolatini saqlaydi.
@@ -79,6 +106,22 @@ class InMemoryOfflineQueue implements OfflineQueue {
   @override
   Future<void> remove(String operationId) async {
     _operations.remove(operationId);
+  }
+
+  @override
+  Future<void> retryNow(String operationId) async {
+    final existing = _operations[operationId];
+    if (existing == null) return;
+    if (existing.status != PendingOperationStatus.needsAttention) return;
+
+    _operations[operationId] = existing.resetForManualRetry();
+  }
+
+  @override
+  Future<List<PendingOperation>> dependentsOf(String operationId) async {
+    return List<PendingOperation>.unmodifiable(
+      _operations.values.where((o) => o.dependsOnOperationId == operationId),
+    );
   }
 
   @override

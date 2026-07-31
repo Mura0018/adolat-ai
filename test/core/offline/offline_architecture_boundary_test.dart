@@ -121,6 +121,72 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
+  test('offline layer never generates identifiers itself (idempotency invariant)', () {
+    // `docs/ARCHITECTURE.md`, "Sync Engine": idempotentlik amalning
+    // MAHALLIY tomonda generatsiya qilingan BARQAROR identifikatoriga
+    // tayanadi. Agar offline qatlami `id`ni o'zi yasasa (Random/UUID),
+    // qayta urinishda yangi `id` paydo bo'lib, server bir xil amalni
+    // IKKI MARTA bajarardi -- takroriy murojaat/nizo yozuvi.
+    //
+    // Shuning uchun `id` har doim CHAQIRUVCHIdan keladi va bu qatlam
+    // tasodifiylik manbalarini umuman ishlatmaydi.
+    final forbidden = <String, RegExp>{
+      'dart:math (tasodifiylik)': RegExp(r'''^\s*import\s+['"]dart:math'''),
+      'Random': RegExp(r'\bRandom\s*\('),
+      'uuid paketi': RegExp(r'''^\s*import\s+['"]package:uuid'''),
+      'Uuid()': RegExp(r'\bUuid\s*\('),
+    };
+
+    final violations = <String>[];
+
+    for (final file in offlineFiles()) {
+      final lines = file.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        if (commentLine.hasMatch(lines[i])) continue;
+        for (final entry in forbidden.entries) {
+          if (entry.value.hasMatch(lines[i])) {
+            violations.add('${file.path}:${i + 1}: ${entry.key} -- "${lines[i].trim()}"');
+          }
+        }
+      }
+    }
+
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Idempotentlik kaliti (PendingOperation.id) chaqiruvchidan kelishi shart -- '
+          'offline qatlami identifikator YASAMAYDI.\n${violations.join('\n')}',
+    );
+  });
+
+  test('offline layer reads the clock only through an injectable default', () {
+    // Vaqtga bog'liq qarorlar (backoff, urinish vaqti) sinaladigan
+    // bo'lishi uchun soat ALBATTA in'ektsiya qilinadi. `DateTime.now`
+    // faqat standart qiymat sifatida (`clock ?? DateTime.now`) yoki
+    // xotiradagi poydevor implementatsiyalarda uchrashi mumkin.
+    final directClockCall = RegExp(r'DateTime\.now\(\)');
+    final violations = <String>[];
+
+    for (final file in offlineFiles()) {
+      final lines = file.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        if (commentLine.hasMatch(lines[i])) continue;
+        if (!directClockCall.hasMatch(lines[i])) continue;
+        violations.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+      }
+    }
+
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Vaqt to\'g\'ridan-to\'g\'ri o\'qilmasligi kerak (`clock` parametri orqali '
+          'in\'ektsiya qilinadi) -- aks holda backoff/qayta urinish mantig\'ini '
+          'sinab bo\'lmaydi.\n${violations.join('\n')}',
+    );
+  });
+
   test('Module 6A adds no new package dependency', () {
     // Qoida: "Flutter dependency qo'shma". Offline qatlami faqat Dart
     // yadrosi (dart:async) va loyihaning o'z kodidan foydalanadi.

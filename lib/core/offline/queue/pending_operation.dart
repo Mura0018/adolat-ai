@@ -22,7 +22,29 @@ enum PendingOperationKind {
 
   /// AI tahlil so'rovi (`docs/ARCHITECTURE.md`, "Sync Engine" —
   /// AI vazifalari navbati bilan integratsiya).
-  requestAiAnalysis,
+  requestAiAnalysis;
+
+  /// Bu turdagi yangi amal, xuddi shu yozuv ustidagi ESKI (hali
+  /// boshlanmagan) amalni ORTIQCHA qiladimi (Module 6C).
+  ///
+  /// **Faqat [updateRecord] uchun `true`.** Sabab: tahrirlash amali
+  /// yozuvning TO'LIQ yangi holatini olib yuradi, shuning uchun
+  /// oflaynda ketma-ket beshta tahrir qilingan bo'lsa, serverga
+  /// beshta so'rov emas, eng so'nggisi yuborilishi kifoya.
+  ///
+  /// **Nega qolganlari uchun `false` — ataylab ehtiyotkor:**
+  /// - [createRecord]/[submitRecord]/[deleteRecord] — bir marta
+  ///   bajariladigan, hayot-davri amallari; ularni "almashtirish"
+  ///   mantiqan noto'g'ri bo'lardi;
+  /// - [uploadAttachment]/[requestAiAnalysis] — QO'SHIMCHA qiluvchi
+  ///   amallar: ikkita fayl yoki ikkita tahlil so'rovi bir-birining
+  ///   o'rnini bosmaydi. Ularni birlashtirsak, foydalanuvchining
+  ///   ishi JIMGINA yo'qolardi — bu butun offline qatlamining asosiy
+  ///   va'dasiga zid.
+  ///
+  /// Shubha bo'lganda javob har doim `false`: ortiqcha so'rov
+  /// yuborish — yo'qolgan ma'lumotdan ko'ra ancha arzon xato.
+  bool get supersedesPending => this == PendingOperationKind.updateRecord;
 }
 
 /// Navbatdagi amalning HOLATI — foydalanuvchiga ko'rsatiladigan
@@ -139,6 +161,110 @@ class PendingOperation {
   bool get isSyncable => status.isSyncable;
 
   bool get hasDependency => dependsOnOperationId != null;
+
+  /// Bir xil MANTIQIY amalmi — bir xil yozuv ustidagi bir xil turdagi
+  /// amal (Module 6C).
+  ///
+  /// `id` bo'yicha tenglikdan FARQLI: foydalanuvchi oflaynda bitta
+  /// qoralamani ikki marta tahrirlasa, ikkita HAR XIL `id`li, lekin
+  /// mantiqan bir xil `updateRecord` amali paydo bo'ladi — ikkinchisi
+  /// birinchisini ORTIQCHA qiladi (`OfflineQueue.enqueue`ga qarang).
+  bool isSameLogicalOperationAs(PendingOperation other) {
+    return other.kind == kind &&
+        other.entityType == entityType &&
+        other.entityId == entityId;
+  }
+
+  /// [other] shu amalning o'rnini bosa oladimi — mantiqan bir xil VA
+  /// turi almashtirishga ruxsat beradigan bo'lsa.
+  bool canBeSupersededBy(PendingOperation other) {
+    return other.kind.supersedesPending && isSameLogicalOperationAs(other);
+  }
+
+  /// Doimiy saqlashga yozish uchun oddiy xarita (Module 6C).
+  ///
+  /// **Nega kerak:** Phase 6A `LocalStore` (saqlash) va `OfflineQueue`
+  /// (navbat) shartnomalarini alohida belgilagan edi, lekin ularni
+  /// ULAYDIGAN bo'g'in yo'q edi — `PendingOperation`ni saqlab
+  /// bo'lmasdi, ya'ni navbat hech qachon ilova qayta ochilganda
+  /// tiklanmasdi. Bu — offline-first talabining ("Doimiylik") o'zagi.
+  ///
+  /// Format ataylab oddiy (`Map<String, Object?>`, faqat primitivlar):
+  /// hech qanday kodgen yoki paketga bog'liq emas, shuning uchun
+  /// istalgan saqlash implementatsiyasi (JSON, sqlite, key-value) uni
+  /// qabul qila oladi.
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'id': id,
+      'kind': kind.name,
+      'entityType': entityType,
+      'entityId': entityId,
+      'payload': payload,
+      'createdAt': createdAt.toIso8601String(),
+      'status': status.name,
+      'attemptCount': attemptCount,
+      'lastAttemptAt': lastAttemptAt?.toIso8601String(),
+      'lastError': lastError,
+      'dependsOnOperationId': dependsOnOperationId,
+    };
+  }
+
+  /// Saqlangan xaritadan tiklaydi.
+  ///
+  /// Noma'lum `kind`/`status` qiymati uchun **jimgina standart
+  /// qiymatga tushib qolmaydi** — `FormatException` tashlanadi.
+  /// Sabab: noto'g'ri tiklangan amal serverga NOTO'G'RI so'rov
+  /// yuborishi mumkin edi (masalan `deleteRecord` o'rniga
+  /// `createRecord`), bu esa ma'lumot yo'qolishiga olib borardi.
+  factory PendingOperation.fromJson(Map<String, Object?> json) {
+    final kindName = json['kind'] as String?;
+    final statusName = json['status'] as String?;
+
+    return PendingOperation(
+      id: json['id']! as String,
+      kind: PendingOperationKind.values.firstWhere(
+        (value) => value.name == kindName,
+        orElse: () => throw FormatException('Noma\'lum PendingOperationKind: $kindName'),
+      ),
+      entityType: json['entityType']! as String,
+      entityId: json['entityId']! as String,
+      payload: Map<String, Object?>.from((json['payload'] as Map?) ?? const {}),
+      createdAt: DateTime.parse(json['createdAt']! as String),
+      status: PendingOperationStatus.values.firstWhere(
+        (value) => value.name == statusName,
+        orElse: () => throw FormatException('Noma\'lum PendingOperationStatus: $statusName'),
+      ),
+      attemptCount: (json['attemptCount'] as int?) ?? 0,
+      lastAttemptAt: json['lastAttemptAt'] == null
+          ? null
+          : DateTime.parse(json['lastAttemptAt']! as String),
+      lastError: json['lastError'] as String?,
+      dependsOnOperationId: json['dependsOnOperationId'] as String?,
+    );
+  }
+
+  /// Foydalanuvchi "qayta urinish"ni so'raganda — `needsAttention`
+  /// holatidan navbatga qaytaradi (Module 6C, queue lifecycle).
+  ///
+  /// Urinishlar hisobi NOLGA qaytariladi: bu foydalanuvchining ONGLI
+  /// qarori, avvalgi avtomatik urinishlar tarixi uni cheklamasligi
+  /// kerak ("No Dead End Rule" — foydalanuvchiga har doim keyingi
+  /// qadam bo'lishi shart).
+  PendingOperation resetForManualRetry() {
+    return PendingOperation(
+      id: id,
+      kind: kind,
+      entityType: entityType,
+      entityId: entityId,
+      payload: payload,
+      createdAt: createdAt,
+      status: PendingOperationStatus.pending,
+      attemptCount: 0,
+      lastAttemptAt: null,
+      lastError: null,
+      dependsOnOperationId: dependsOnOperationId,
+    );
+  }
 
   PendingOperation markInProgress({required DateTime at}) {
     return _copyWith(

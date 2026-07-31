@@ -34,7 +34,24 @@ class SyncReport {
     required this.needsAttention,
     this.skippedOffline = false,
     this.interruptedByOffline = false,
+    this.skippedAlreadyRunning = false,
   });
+
+  /// Sikl boshlanmadi, chunki BOSHQA sikl allaqachon ishlayapti
+  /// (Module 6C).
+  ///
+  /// **Nega alohida bayroq:** 6A/6B'da bu holat "hech narsa qilinmadi"
+  /// hisobotidan farq qilmasdi — natijada chaqiruvchi (masalan
+  /// `SyncScheduler`) signal YO'QOLGANINI bila olmasdi. Endi
+  /// `SyncCoordinator` shu bayroqqa qarab siklni QAYTA rejalashtiradi.
+  const SyncReport.skippedAlreadyRunning(this.trigger)
+    : processed = 0,
+      succeeded = 0,
+      transientFailures = 0,
+      needsAttention = 0,
+      skippedOffline = false,
+      interruptedByOffline = false,
+      skippedAlreadyRunning = true;
 
   /// Tarmoq yo'qligi sababli umuman ishlamagan sikl.
   const SyncReport.skippedOffline(this.trigger)
@@ -43,7 +60,8 @@ class SyncReport {
       transientFailures = 0,
       needsAttention = 0,
       skippedOffline = true,
-      interruptedByOffline = false;
+      interruptedByOffline = false,
+      skippedAlreadyRunning = false;
 
   final SyncTrigger trigger;
   final int processed;
@@ -64,13 +82,19 @@ class SyncReport {
   /// bildiradi.
   final bool interruptedByOffline;
 
+  final bool skippedAlreadyRunning;
+
   bool get hasFailures => transientFailures > 0 || needsAttention > 0;
+
+  /// Sikl umuman ishlamadi — sabab tarmoq yoki bandlik.
+  bool get didNotRun => skippedOffline || skippedAlreadyRunning;
 
   @override
   String toString() =>
       'SyncReport(trigger: ${trigger.name}, processed: $processed, succeeded: $succeeded, '
       'transient: $transientFailures, needsAttention: $needsAttention, '
-      'skippedOffline: $skippedOffline, interruptedByOffline: $interruptedByOffline)';
+      'skippedOffline: $skippedOffline, interruptedByOffline: $interruptedByOffline, '
+      'skippedAlreadyRunning: $skippedAlreadyRunning)';
 }
 
 /// BITTA navbatdagi amalni haqiqatan bajaruvchi chegara.

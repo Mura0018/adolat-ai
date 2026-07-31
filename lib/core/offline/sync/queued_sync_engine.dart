@@ -102,15 +102,11 @@ class QueuedSyncEngine implements SyncEngine {
   @override
   Future<SyncReport> sync({required SyncTrigger trigger}) async {
     if (_isRunning) {
-      // Yangi sikl BOSHLANMAYDI (shartnoma talabi) -- joriy holat
-      // qaytariladi.
-      return SyncReport(
-        trigger: trigger,
-        processed: 0,
-        succeeded: 0,
-        transientFailures: 0,
-        needsAttention: 0,
-      );
+      // Yangi sikl BOSHLANMAYDI (shartnoma talabi). Module 6C: bu
+      // holat endi ANIQ belgilanadi, shuning uchun chaqiruvchi
+      // (`SyncCoordinator`) signal yo'qolganini bilib, siklni qayta
+      // rejalashtira oladi.
+      return SyncReport.skippedAlreadyRunning(trigger);
     }
 
     _isRunning = true;
@@ -230,14 +226,56 @@ class QueuedSyncEngine implements SyncEngine {
       outcome = SyncTransientFailure('Kutilmagan xatolik: $error');
     }
 
-    return switch (outcome) {
-      SyncSuccess() => _save(started.markCompleted()),
-      SyncPermanentFailure(:final message) => _save(started.markNeedsAttention(message)),
-      SyncTransientFailure(:final message) => _save(_afterTransientFailure(started, message)),
-      SyncConflictDetected(:final conflict) => _save(
+    final resolved = switch (outcome) {
+      SyncSuccess() => await _save(started.markCompleted()),
+      SyncPermanentFailure(:final message) => await _save(started.markNeedsAttention(message)),
+      SyncTransientFailure(:final message) => await _save(
+        _afterTransientFailure(started, message),
+      ),
+      SyncConflictDetected(:final conflict) => await _save(
         _applyConflictResolution(started, _conflictStrategy.resolve(conflict)),
       ),
     };
+
+    if (resolved.status == PendingOperationStatus.needsAttention) {
+      await _blockDependentsOf(resolved);
+    }
+
+    return resolved;
+  }
+
+  /// Bloklangan amalga BOG'LIQ amallarni ham foydalanuvchi e'tiboriga
+  /// chiqaradi (Module 6C).
+  ///
+  /// **Bu — 6A/6B integratsiyasida aniqlangan eng jiddiy bo'shliq:**
+  /// bog'liqlik faqat ota-amal `completed` bo'lganda qanoatlantirilardi.
+  /// Agar ota-amal `needsAttention`ga tushsa (doimiy xatolik yoki
+  /// ziddiyat), unga bog'langan amal MANGU `pending` holida navbatda
+  /// qolar, hech qachon olinmas va hech qayerda ko'rinmasdi —
+  /// foydalanuvchi uchun "jimgina yo'qolgan" bo'lardi
+  /// (`DEVELOPMENT_RULES.md`, 17–19-band, "No Dead End Rule"ning
+  /// bevosita buzilishi).
+  ///
+  /// Endi bog'liq amal ham `needsAttention`ga o'tadi va SABABI
+  /// ko'rsatiladi. Foydalanuvchi ota-amalni tuzatib
+  /// `OfflineQueue.retryNow()` bilan ikkalasini ham qayta ishga
+  /// tushira oladi.
+  ///
+  /// Zanjir bo'ylab rekursiv ishlaydi (A → B → C).
+  Future<void> _blockDependentsOf(PendingOperation blocked) async {
+    final dependents = await _queue.dependentsOf(blocked.id);
+
+    for (final dependent in dependents) {
+      if (dependent.status == PendingOperationStatus.needsAttention) continue;
+      if (dependent.status == PendingOperationStatus.completed) continue;
+
+      final updated = dependent.markNeedsAttention(
+        'Bog\'liq amal bajarilmadi (${blocked.entityType}/${blocked.kind.name}) — '
+        'avval o\'sha amal hal qilinishi kerak.',
+      );
+      await _queue.update(updated);
+      await _blockDependentsOf(updated);
+    }
   }
 
   /// Vaqtinchalik xatolik: urinishlar chegarasiga yetgan bo'lsa,

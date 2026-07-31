@@ -195,7 +195,69 @@ Bu tamoyil quyidagi aniq talablar orqali amalga oshiriladi:
 
 Ushbu talabning texnik amalga oshirilishi uchta bir-biriga bog'liq quyi komponentga bo'linadi — **Local Storage** (ma'lumot qayerda va qanday saqlanadi), **Sync Engine** (mahalliy va server holati qanday muvofiqlashtiriladi) va **Network State Handling** (tarmoq holati qanday aniqlanadi va ilova xatti-harakatiga ta'sir qiladi) — bular navbatdagi bo'limlarda batafsil yoritiladi.
 
-### Amalga oshirish holati (Module 6, Phase 6A–6B — 2026-07-30)
+### Offline-First komponentlari (Module 6, Phase 6A–6C)
+
+```mermaid
+flowchart TD
+    subgraph app["Ilova qatlami (kelgusi bosqich)"]
+        UI["UI / Repository"]
+    end
+
+    subgraph core["lib/core/offline/ — Module 6"]
+        COORD["SyncCoordinator<br/>(yagona kirish nuqtasi,<br/>signal birlashtirish)"]
+        SCHED["SyncScheduler<br/>(QACHON)"]
+        ENGINE["QueuedSyncEngine<br/>(QANDAY — I/O yo'q)"]
+        QUEUE["OfflineQueue<br/>(FIFO + bog'liqlik + lifecycle)"]
+        STORE["LocalStore<br/>(saqlash)"]
+        CONFLICT["ConflictResolutionStrategy"]
+        BACKOFF["SyncBackoffPolicy"]
+        NET["NetworkStateMonitor<br/>(sezuv organi)"]
+    end
+
+    HANDLER["SyncOperationHandler<br/>(YAGONA tarmoq nuqtasi —<br/>hali qurilmagan)"]
+    SERVER[("Supabase")]
+
+    UI -->|"submit / retry / cancel"| COORD
+    COORD --> SCHED
+    COORD --> ENGINE
+    COORD --> QUEUE
+    SCHED -->|"tarmoq tiklandi /<br/>ilova ochildi"| ENGINE
+    NET --> SCHED
+    NET --> ENGINE
+    ENGINE --> QUEUE
+    ENGINE --> BACKOFF
+    ENGINE --> CONFLICT
+    ENGINE -.->|"har bir amal"| HANDLER
+    QUEUE -->|"LocalStoreOfflineQueue"| STORE
+    HANDLER -.-> SERVER
+
+    style HANDLER stroke-dasharray: 5 5
+    style SERVER stroke-dasharray: 5 5
+```
+
+Uzuq chiziqli bloklar — **hali qurilmagan** (Module 7+). Butun yadro "serverga qanday murojaat qilinadi" bilimini faqat `SyncOperationHandler` ortida saqlaydi.
+
+### Navbatdagi amalning hayot davri
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: enqueue()
+    pending --> inProgress: sikl amalni oldi
+    inProgress --> completed: SyncSuccess
+    inProgress --> failed: vaqtinchalik xatolik
+    inProgress --> needsAttention: doimiy xatolik / ziddiyat
+    failed --> inProgress: backoff oralig'i o'tdi
+    failed --> needsAttention: urinishlar chegarasi tugadi
+    inProgress --> failed: ilova uzilib qoldi (tiklash)
+    needsAttention --> pending: retryNow() — foydalanuvchi qarori
+    completed --> [*]: removeCompleted()
+    pending --> [*]: remove() — foydalanuvchi bekor qildi
+    needsAttention --> [*]: remove()
+```
+
+Ikkita muhim xossa: **`completed` va `remove()`dan boshqa hech qanday yo'l amalni navbatdan chiqarmaydi** (jimgina yo'qolish mumkin emas), va **`needsAttention` yakuniy tuzoq emas** — undan `retryNow()` orqali chiqish yo'li bor ("No Dead End Rule").
+
+### Amalga oshirish holati (Module 6, Phase 6A–6C — 2026-07-31)
 
 Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** `lib/core/offline/`da qurildi (batafsil: [`lib/core/offline/README.md`](../lib/core/offline/README.md)). Bu — **faqat arxitektura va interfeyslar**: hech qanday HTTP/WebSocket, Supabase SDK, backend/Edge Function kodi, API kalit yoki UI o'zgarishi qo'shilmagan, yangi paket bog'liqligi ham olinmagan.
 
@@ -213,6 +275,18 @@ Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** 
 - **Backoff endi haqiqatan kutiladi:** Phase 6A oraliqni hisoblardi, lekin muvaffaqiyatsiz amal keyingi siklda darhol qayta urinilardi. 6B `SyncBackoffPolicy.isReadyForRetry()` va dvigateldagi filtr orqali *"ortib boruvchi kutish oralig'i"* talabini amalda ta'minlaydi (FIFO tartibi buzilmaydi).
 - **Sikl o'rtasida tarmoq uzilishi** — qolgan amallar `pending` holida navbatda saqlanadi (`SyncReport.interruptedByOffline`), *"joriy bajarilayotgan so'rovlar xavfsiz tarzda navbatga qaytariladi"* talabiga muvofiq.
 - **Uzilib qolgan amallarni tiklash** — ilova sinxronizatsiya o'rtasida to'xtasa, `inProgress`da osilib qolgan amal keyingi sikl boshida qayta urinishga qaytariladi. Bularsiz amal mangu shu holatda qolib, foydalanuvchi uchun "jimgina yo'qolgan"ga aylanardi; idempotentlik kaliti o'zgarmagani uchun qayta yuborish takroriy yozuv hosil qilmaydi.
+
+**Phase 6C qo'shimchalari (yakunlash — 2026-07-31).** 6A/6B integratsiyasida topilgan beshta bo'shliq yopildi va navbat hayot davri to'liq yakunlandi:
+
+| Bo'shliq (6A/6B) | Xavfi | Yechim (6C) |
+|---|---|---|
+| `enqueue` boshlangan amal ustiga yozardi | Ayni damda yuborilayotgan amal ikkinchi marta yuborilishi — **takroriy yozuv** | `inProgress`/`completed` amal ustiga yozilmaydi |
+| Bloklangan ota-amalga bog'liq amal mangu kutardi | Foydalanuvchi uchun **jimgina yo'qolish** | Kaskad: bog'liqlar ham `needsAttention`ga o'tadi, sabab bilan |
+| `needsAttention`dan chiqish yo'li yo'q edi | "Boshi berk holat" — 17–19-bandlar buzilishi | `OfflineQueue.retryNow()` + `SyncCoordinator.retryOperation()` |
+| Sikl davomida kelgan sabab yo'qolardi | Yangi amallar keyingi tasodifiy sababgacha kutardi | `SyncCoordinator` signalni birlashtiradi (aynan bitta qo'shimcha sikl) |
+| `PendingOperation` seriyalanmasdi | Navbatni **saqlab bo'lmasdi** — "Doimiylik" talabi bajarilmasdi | `toJson`/`fromJson` + `LocalStoreOfflineQueue` |
+
+Qo'shimcha: bitta yozuvning ketma-ket tahrirlari bitta so'rovga birlashtiriladi (**faqat `updateRecord`** — qo'shimcha qiluvchi amallar hech qachon birlashtirilmaydi, aks holda foydalanuvchi ishi yo'qolardi).
 
 Foydalanuvchiga ko'rsatiladigan holat (*"lokal saqlangan / yuborilishi kutilmoqda / sinxronlanmoqda / serverga yetkazildi"*) `SyncState` va `RecordSyncStatus` sifatida modellashtirilgan, lekin UI'ga hali ulanmagan (Phase 6A UI'ga tegmaydi).
 

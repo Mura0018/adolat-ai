@@ -17,9 +17,26 @@ import 'pending_operation.dart';
 abstract interface class OfflineQueue {
   /// Yangi amalni navbatga qo'yadi.
   ///
-  /// Bir xil [PendingOperation.id] bilan qayta chaqirilsa, YANGI yozuv
-  /// yaratilmaydi — mavjudi yangilanadi (idempotentlik: bir xil amal
-  /// ikki marta navbatga tushmaydi).
+  /// **Idempotentlik va takrorlanish qoidalari (Module 6C):**
+  ///
+  /// 1. Bir xil [PendingOperation.id] bilan qayta chaqirilsa, YANGI
+  ///    yozuv yaratilmaydi.
+  /// 2. **Mavjud amal ALLAQACHON boshlangan bo'lsa (`inProgress`)
+  ///    yoki yakunlangan bo'lsa (`completed`), u USTIGA
+  ///    YOZILMAYDI** — chaqiruv jimgina e'tiborsiz qoldiriladi.
+  ///    Aks holda ish vaqtidagi holat (urinishlar soni, `inProgress`
+  ///    belgisi) nolga qaytib, ayni damda yuborilayotgan amal
+  ///    IKKINCHI marta yuborilishi mumkin edi — bu aynan
+  ///    idempotentlik buzilishi (Phase 6A/6B integratsiyasida
+  ///    aniqlangan bo'shliq).
+  /// 3. **Mantiqan bir xil amal** (bir xil `entityType`+`entityId`+
+  ///    `kind`, lekin boshqa `id`) navbatda `pending` holatida
+  ///    turgan bo'lsa, u YANGISI bilan ALMASHTIRILADI
+  ///    (`PendingOperation.isSameLogicalOperationAs`). Foydalanuvchi
+  ///    bitta qoralamani oflaynda besh marta tahrirlasa, serverga
+  ///    beshta emas, ENG SO'NGGI holat yuboriladi. Faqat hali
+  ///    boshlanmagan (`pending`) amal almashtiriladi — boshlangani
+  ///    hech qachon tegilmaydi.
   Future<void> enqueue(PendingOperation operation);
 
   /// Sinxronizatsiya uchun TAYYOR amallar — FIFO tartibida, bog'liqligi
@@ -46,6 +63,29 @@ abstract interface class OfflineQueue {
   /// Foydalanuvchi ataylab bekor qilgan amalni olib tashlaydi — bu
   /// YAGONA yo'l bilan amal navbatdan yo'qoladi (avtomatik emas).
   Future<void> remove(String operationId);
+
+  /// Foydalanuvchi `needsAttention` holatidagi amalni QAYTA URINISHGA
+  /// yuboradi (Module 6C, queue lifecycle).
+  ///
+  /// **Nega kerak:** 6A/6B'da amal `needsAttention`ga tushgach,
+  /// undan CHIQISH yo'li yo'q edi — foydalanuvchiga "e'tibor talab
+  /// qiladi" deb ko'rsatilardi-yu, u hech narsa qila olmasdi. Bu
+  /// `DEVELOPMENT_RULES.md`, 17–19-bandlar ("No Dead End Rule")ning
+  /// bevosita buzilishi edi.
+  ///
+  /// Urinishlar hisobi nolga qaytariladi
+  /// (`PendingOperation.resetForManualRetry`).
+  ///
+  /// Amal topilmasa yoki `needsAttention`da bo'lmasa — hech narsa
+  /// qilmaydi (idempotent).
+  Future<void> retryNow(String operationId);
+
+  /// Berilgan amalga BOG'LIQ bo'lgan amallar (`dependsOnOperationId`).
+  ///
+  /// Bog'liqlik zanjirini kuzatish uchun kerak: agar ota-amal
+  /// bajarilmasa, unga bog'langanlar mangu kutib qolmasligi shart
+  /// (`QueuedSyncEngine` shu ro'yxatni bloklash uchun ishlatadi).
+  Future<List<PendingOperation>> dependentsOf(String operationId);
 
   /// Muvaffaqiyatli yakunlangan amallarni tozalaydi
   /// (`docs/ARCHITECTURE.md`, "Local Storage" → *"Hajm va tozalash
