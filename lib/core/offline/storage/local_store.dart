@@ -3,17 +3,19 @@
 ///
 /// **Bu — Module 6A'ning asosiy almashtirish nuqtasi.** Hozircha yagona
 /// implementatsiya — `InMemoryLocalStore` (poydevor, testda ishlaydi).
-/// Haqiqiy doimiy (persistent) implementatsiya (Drift/Isar/Hive/sqflite —
-/// hali TANLANMAGAN) shu interfeys ORTIGA qo'yiladi; chaqiruvchi kod
-/// (`OfflineQueue`, repository'lar) o'zgarmaydi.
 ///
-/// **Nega paket tanlovi hali qilinmagan:** `docs/DEVELOPMENT_RULES.md`,
-/// 3-band ("Claude Code hech qachon taxmin qilib kod yozmaydi") —
-/// saqlash paketini tanlash mahsulot/infratuzilma qarori (shifrlash,
-/// migratsiya, platforma qo'llab-quvvatlashi bo'yicha talablarga
-/// bog'liq) va u ADR sifatida rasmiylashtirilishi kerak. Shartnomani
-/// oldindan belgilash esa shu qaror kechikkan holda ham ish davom
-/// etishiga imkon beradi.
+/// **Doimiy (persistent) implementatsiya — Drift** (`docs/adr/ADR-007-offline-local-storage.md`,
+/// Qabul qilingan 2026-07-31). U shu interfeys ORTIGA qo'yiladi;
+/// chaqiruvchi kod (`OfflineQueue`, `LocalStoreOfflineQueue`,
+/// repository'lar) o'zgarmaydi. **Implementatsiya hali yozilmagan** —
+/// alohida vazifa sifatida rejalashtirilgan.
+///
+/// **Nega Drift** (ADR-007ning qisqa xulosasi): migratsiya vaqtidagi
+/// jimgina ma'lumot yo'qolishi shu qatlamning eng katta uzoq muddatli
+/// xavfi va Drift unga versiyalangan migratsiya hamda migratsiyani
+/// sinovdan o'tkazish vositalari bilan yagona to'liq javob beradi;
+/// uning asosiy kamchiligi (kodgen) esa loyihada allaqachon mavjud
+/// (`build_runner`), ya'ni qo'shimcha xarajat yaratmaydi.
 ///
 /// **Xavfsizlik chegarasi:** bu yerga autentifikatsiya tokenlari
 /// saqlanmaydi — ular `Flutter Secure Storage`da, alohida

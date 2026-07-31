@@ -49,9 +49,9 @@ core/offline/
 
 | Chegara | Hozir | Kelgusida |
 |---|---|---|
-| `LocalStore` | `InMemoryLocalStore` | Doimiy saqlash (paket ADR bilan tanlanadi) |
+| `LocalStore` | `InMemoryLocalStore` | **Drift** (ADR-007, qabul qilingan 2026-07-31) |
 | `SyncOperationHandler` | Yo'q (testda fake) | Supabase orqali haqiqiy yuborish |
-| `NetworkStateMonitor` | `InMemoryNetworkStateMonitor` (qo'lda boshqariladi) | Platforma signali (paket ADR bilan tanlanadi) |
+| `NetworkStateMonitor` | `InMemoryNetworkStateMonitor` (qo'lda boshqariladi) | **connectivity_plus (turtki) + so'rov natijalari (haqiqat)** (ADR-008, qabul qilingan 2026-07-31) |
 | `ConflictResolutionStrategy` | `DefaultConflictResolutionStrategy` | Feature'ga xos qoida kerak bo'lsa |
 
 **Muhim:** butun offline yadrosi "serverga qanday murojaat qilinadi" bilimini FAQAT `SyncOperationHandler` ortida saqlaydi — shuning uchun 6A'da tarmoq kodi umuman yozilmagan holda ham navbat, tartib, qayta urinish va ziddiyat qoidalari to'liq qurilgan va sinalgan.

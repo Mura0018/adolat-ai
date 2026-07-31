@@ -263,10 +263,10 @@ Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** 
 
 | Bo'lim | Phase 6A'da qurilgan | Hali qurilmagan |
 |---|---|---|
-| Local Storage | `LocalStore<T>`/`LocalStorage` shartnomasi + xotiradagi implementatsiya; `LocalDataSource<T>` va `RecordSyncStatus` | **Doimiylik (persistence)** — saqlash paketi (Drift/Isar/Hive/sqflite) tanlanmagan, ADR talab qilinadi |
+| Local Storage | `LocalStore<T>`/`LocalStorage` shartnomasi + xotiradagi implementatsiya; `LocalDataSource<T>` va `RecordSyncStatus` | **Doimiylik (persistence)** — paket tanlandi (**Drift**, ADR-007), implementatsiya hali yozilmagan |
 | Sync Engine | `SyncEngine`/`SyncOperationHandler` shartnomalari, `PendingOperation`/`OfflineQueue` (FIFO + bog'liqlik tartibi + idempotentlik kaliti), `SyncBackoffPolicy`, `QueuedSyncEngine` (I/O'siz orkestratsiya) | Haqiqiy yuborish (`SyncOperationHandler` implementatsiyasi), fon rejimi jadvali |
 | Conflict Resolution | `SyncConflict`, `ConflictResolution` (sealed), `DefaultConflictResolutionStrategy` — shu bo'limdagi to'rtala qoidaning xolis ifodasi | Ziddiyatni ANIQLASH (server javobini taqqoslash) va audit izini yozish |
-| Network State Handling | **(6B)** `NetworkStatus`/`NetworkStatusChange`, `NetworkStateMonitor` shartnomasi + boshqariladigan implementatsiya; `SyncScheduler` (ishga tushish sabablari); sikl o'rtasida uzilishga reaksiya | Platforma signali manbai (paket tanlovi ADR talab qiladi) va UI ko'rsatkichi |
+| Network State Handling | **(6B)** `NetworkStatus`/`NetworkStatusChange`, `NetworkStateMonitor` shartnomasi + boshqariladigan implementatsiya; `SyncScheduler` (ishga tushish sabablari); sikl o'rtasida uzilishga reaksiya | Signal manbai tanlandi (**connectivity_plus + so'rov natijalari**, ADR-008), implementatsiya hali yozilmagan; UI ko'rsatkichi |
 
 **Phase 6B qo'shimchalari (Network State Handling va rejalashtirish):**
 

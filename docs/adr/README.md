@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADR) — Adolat AI
 
-Bu papka **Zero-Regret Audit** (Phase 6'dan oldingi arxitektura auditi) davomida aniqlangan Critical va High darajadagi topilmalar bo'yicha rasmiy qarorlar hujjatini saqlaydi.
+Bu papka **Zero-Regret Audit** (Phase 6'dan oldingi arxitektura auditi) davomida aniqlangan Critical va High darajadagi topilmalar, shuningdek keyingi modullar davomida yuzaga kelgan arxitektura qarorlari bo'yicha rasmiy hujjatlarni saqlaydi.
 
 ## Maqsad va qoida
 
@@ -19,14 +19,16 @@ Bu papka **Zero-Regret Audit** (Phase 6'dan oldingi arxitektura auditi) davomida
 | [ADR-004](./ADR-004-ai-cost-governance.md) | AI xarajatini boshqarish va suiiste'moldan himoya | High | Taklif qilingan |
 | [ADR-005](./ADR-005-ai-vendor-fallback.md) | AI vendor uzilishi/fallback strategiyasi | High/Medium | Taklif qilingan |
 | [ADR-006](./ADR-006-hybrid-infrastructure-strategy.md) | Hybrid Infrastructure Strategy — sezgir ma'lumot chegarasi va vendor mustaqilligi | High | Qabul qilingan (2026-07-28) |
+| [ADR-007](./ADR-007-offline-local-storage.md) | Offline-First uchun doimiy Local Storage paketi (Drift/Isar/Hive/sqflite) | High | Qabul qilingan (2026-07-31) — **Drift** |
+| [ADR-008](./ADR-008-network-signal-source.md) | Tarmoq holati signalining manbai (connectivity_plus / platform channel / abstraksiya) | High | Qabul qilingan (2026-07-31) — **abstraksiya + connectivity_plus + so'rov natijalari** |
 
 ## Navbatdagi ADR'lar (hali yozilmagan)
 
 Zero-Regret Audit'da aniqlangan qolgan High darajadagi topilmalar — foydalanuvchi ko'rsatmasiga muvofiq hozircha ushbu beshta ADR bilan cheklanadi, lekin quyidagilar keyingi navbatda ADR-006 dan boshlab hujjatlashtirilishi kerak:
 
-- Offline-First arxitekturasi va Phase 2/3'da qurilgan repository shartnomalari (`Result<T>` qaytish turi) o'rtasidagi moslik masalasi.
+- Offline-First arxitekturasi va Phase 2/3'da qurilgan repository shartnomalari (`Result<T>` qaytish turi) o'rtasidagi moslik masalasi. **(Qisman yopildi:** Module 6 offline qatlamini qurdi, ADR-007 va ADR-008 uning ikkita bloklovchi qarorini yopdi (2026-07-31); qolgani — feature repository'larini shu qatlamga ulash, hali qilinmagan.**)**
 - Ro'yxat (list) endpointlarida pagination yo'qligi (`listMine()` va h.k.).
 - Yassi 3 rolli model (`citizen`/`organization`/`admin`) va operatsion miqyoslanish chegarasi.
-- Avtomatlashtirilgan test va CI yo'qligi.
+- ~~Avtomatlashtirilgan test va CI yo'qligi.~~ **(Yopildi** — `.github/workflows/ci.yml` va 633 ta test; `docs/ACTION_PLAN.md`, 7-bo'limga qarang.**)**
 
 Bu ro'yxat `docs/ACTION_PLAN.md` bilan muvofiqlashtirilishi kerak (`DEVELOPMENT_RULES.md`, 25-band).

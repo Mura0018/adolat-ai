@@ -3,17 +3,22 @@ import 'network_status.dart';
 /// Tarmoq holatini kuzatuvchi ABSTRAKT shartnoma
 /// (`docs/ARCHITECTURE.md`, "Network State Handling").
 ///
-/// **Bu — Module 6B'ning asosiy almashtirish nuqtasi.** Haqiqiy
-/// implementatsiya platforma signallarini (`connectivity_plus` kabi
-/// paket yoki platform channel) va backend'ga yetish tekshiruvini
-/// birlashtiradi — lekin **u paketni tanlash alohida qaror** va yangi
-/// bog'liqlik qo'shishni talab qiladi, shuning uchun bu bosqichda
-/// ataylab qilinmagan (`DEVELOPMENT_RULES.md`, 3-band).
+/// **Bu — Module 6B'ning asosiy almashtirish nuqtasi.**
 ///
-/// Shartnoma oldin belgilangani uchun `SyncScheduler` va
-/// `QueuedSyncEngine` haqiqiy kuzatuvsiz ham to'liq qurilgan va
-/// sinalgan — paket kelganda faqat shu interfeysning yangi
-/// implementatsiyasi yoziladi.
+/// **Qabul qilingan qaror (`docs/adr/ADR-008-network-signal-source.md`,
+/// 2026-07-31):** haqiqiy implementatsiya IKKI manbani birlashtiradi —
+/// `connectivity_plus` **turtki (hint)** sifatida (interfeys
+/// yo'qolganda darhol to'xtash, qaytganda urinishga signal) va
+/// **so'rov natijalari** (`SyncOperationOutcome`) **haqiqat manbai**
+/// sifatida. Sabab: hujjat oflaynni *"backend'ga yeta olmaslik"* deb
+/// ta'riflaydi, interfeys holatini o'lchaydigan paket esa bunga javob
+/// bera olmaydi — Wi-Fi'ga ulangan, lekin internetga chiqmaydigan
+/// qurilma unga "onlayn" bo'lib ko'rinadi.
+///
+/// **Implementatsiya hali yozilmagan** — alohida vazifa sifatida
+/// rejalashtirilgan. Shartnoma oldin belgilangani uchun
+/// `SyncScheduler` va `QueuedSyncEngine` haqiqiy kuzatuvsiz ham to'liq
+/// qurilgan va sinalgan.
 ///
 /// **Bu komponent ma'lumot saqlamaydi va sinxronlamaydi** —
 /// `docs/ARCHITECTURE.md`: *"Network State Handling — Offline-First
