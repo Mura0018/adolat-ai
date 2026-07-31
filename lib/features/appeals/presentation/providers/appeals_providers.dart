@@ -1,8 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/result.dart';
+import '../../../../core/offline/sync/sync_engine.dart';
+import '../../../../services/offline/offline_providers.dart';
+import '../../../../services/supabase/supabase_providers.dart';
 import '../../data/datasources/appeals_remote_datasource.dart';
 import '../../data/repositories/appeals_repository_impl.dart';
+import '../../data/repositories/offline_first_appeals_repository.dart';
+import '../../data/sync/appeals_sync_operation_handler.dart';
 import '../../domain/entities/appeal.dart';
 import '../../domain/repositories/appeals_repository.dart';
 import '../../domain/usecases/create_appeal_draft_usecase.dart';
@@ -12,8 +17,39 @@ import '../../domain/usecases/list_my_appeals_usecase.dart';
 import '../../domain/usecases/submit_appeal_usecase.dart';
 import '../../domain/usecases/update_appeal_draft_usecase.dart';
 
+final appealsRemoteDataSourceProvider = Provider<AppealsRemoteDataSource>((ref) {
+  return AppealsRemoteDataSource();
+});
+
+/// Faqat serverga murojaat qiluvchi implementatsiya.
+///
+/// `OfflineFirstAppealsRepository` uni O'RAYDI (o'qish yo'li uchun) —
+/// shuning uchun u yo'q qilinmadi, balki alohida provayderga
+/// ajratildi (Module 7D).
+final remoteAppealsRepositoryProvider = Provider<AppealsRepository>((ref) {
+  return AppealsRepositoryImpl(ref.watch(appealsRemoteDataSourceProvider));
+});
+
+/// Navbatdagi murojaat amallarini serverga yuboruvchi handler
+/// (Module 7C). `main()` da `featureSyncHandlersProvider`ga
+/// qo'shiladi.
+final appealsSyncOperationHandlerProvider = Provider<SyncOperationHandler>((ref) {
+  return AppealsSyncOperationHandler(ref.watch(appealsRemoteDataSourceProvider));
+});
+
+/// **Offline-first murojaat repozitoriysi** (Module 7D).
+///
+/// Interfeys o'zgarmadi — usecase'lar va ekranlar farqni sezmaydi
+/// (`docs/adr/ADR-009-offline-identifier-strategy.md`). Yozish yo'li
+/// endi mahalliy bazaga va navbatga boradi; serverga yuborishni
+/// `SyncEngine` bajaradi.
 final appealsRepositoryProvider = Provider<AppealsRepository>((ref) {
-  return AppealsRepositoryImpl(AppealsRemoteDataSource());
+  return OfflineFirstAppealsRepository(
+    remote: ref.watch(remoteAppealsRepositoryProvider),
+    cache: ref.watch(appealsCacheStoreProvider),
+    queue: ref.watch(offlineQueueProvider),
+    currentUserId: ref.watch(currentUserIdProvider),
+  );
 });
 
 final createAppealDraftUseCaseProvider = Provider<CreateAppealDraftUseCase>((
