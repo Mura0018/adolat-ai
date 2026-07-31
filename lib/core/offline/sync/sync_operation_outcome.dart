@@ -24,9 +24,19 @@ sealed class SyncOperationOutcome {
 class SyncSuccess extends SyncOperationOutcome {
   const SyncSuccess({this.remoteId});
 
-  /// Server bergan haqiqiy identifikator (mahalliy `entityId`
-  /// o'rniga) — mavjud bo'lsa, chaqiruvchi mahalliy nusxani shu bilan
-  /// bog'lashi mumkin.
+  /// Server qaytargan identifikator — **ixtiyoriy, tasdiqlash uchun**.
+  ///
+  /// **ADR-009 (Qabul qilingan 2026-07-31) buni moslashtirish
+  /// mexanizmi bo'lishdan chiqardi.** Yozuv identifikatori endi
+  /// KLIENT tomonda (UUID v7) yaratiladi va birinchi kunidanoq
+  /// YAKUNIY bo'ladi — ya'ni "server bergan haqiqiy id"ni mahalliy
+  /// id o'rniga qo'yish kerak emas, chunki ular AYNAN bir xil.
+  ///
+  /// Maydon saqlanib qolmoqda (uni olib tashlash public API
+  /// o'zgarishi bo'lardi) va ikki holatda foydali: server tomonda
+  /// yaratilgan yozuvlar (masalan admin amallari) uchun, hamda
+  /// diagnostikada — qaytgan id mahalliy id bilan mos kelmasa, bu
+  /// dizayn buzilganini ko'rsatadi.
   final String? remoteId;
 
   @override

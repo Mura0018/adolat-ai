@@ -21,12 +21,13 @@ Bu papka **Zero-Regret Audit** (Phase 6'dan oldingi arxitektura auditi) davomida
 | [ADR-006](./ADR-006-hybrid-infrastructure-strategy.md) | Hybrid Infrastructure Strategy — sezgir ma'lumot chegarasi va vendor mustaqilligi | High | Qabul qilingan (2026-07-28) |
 | [ADR-007](./ADR-007-offline-local-storage.md) | Offline-First uchun doimiy Local Storage paketi (Drift/Isar/Hive/sqflite) | High | Qabul qilingan (2026-07-31) — **Drift** |
 | [ADR-008](./ADR-008-network-signal-source.md) | Tarmoq holati signalining manbai (connectivity_plus / platform channel / abstraksiya) | High | Qabul qilingan (2026-07-31) — **abstraksiya + connectivity_plus + so'rov natijalari** |
+| [ADR-009](./ADR-009-offline-identifier-strategy.md) | Offline yozuvlar uchun identifikator strategiyasi (UUID v4/v7, ULID, integer, server, gibrid) | High | Qabul qilingan (2026-07-31) — **klient tomonda UUID v7** |
 
 ## Navbatdagi ADR'lar (hali yozilmagan)
 
 Zero-Regret Audit'da aniqlangan qolgan High darajadagi topilmalar — foydalanuvchi ko'rsatmasiga muvofiq hozircha ushbu beshta ADR bilan cheklanadi, lekin quyidagilar keyingi navbatda ADR-006 dan boshlab hujjatlashtirilishi kerak:
 
-- Offline-First arxitekturasi va Phase 2/3'da qurilgan repository shartnomalari (`Result<T>` qaytish turi) o'rtasidagi moslik masalasi. **(Qisman yopildi:** Module 6 offline qatlamini qurdi, ADR-007 va ADR-008 uning ikkita bloklovchi qarorini yopdi (2026-07-31); qolgani — feature repository'larini shu qatlamga ulash, hali qilinmagan.**)**
+- ~~Offline-First arxitekturasi va Phase 2/3'da qurilgan repository shartnomalari (`Result<T>` qaytish turi) o'rtasidagi moslik masalasi.~~ **(Hujjatlashtirildi:** Module 6 offline qatlamini qurdi; ADR-007 va ADR-008 uning saqlash va tarmoq blokerlarini yopdi; **ADR-009** esa aynan shu moslik masalasini — oflayn yaratilgan yozuvning identifikatori qayerdan kelishini — hal qiladi (2026-07-31).**)**
 - Ro'yxat (list) endpointlarida pagination yo'qligi (`listMine()` va h.k.).
 - Yassi 3 rolli model (`citizen`/`organization`/`admin`) va operatsion miqyoslanish chegarasi.
 - ~~Avtomatlashtirilgan test va CI yo'qligi.~~ **(Yopildi** — `.github/workflows/ci.yml` va 633 ta test; `docs/ACTION_PLAN.md`, 7-bo'limga qarang.**)**

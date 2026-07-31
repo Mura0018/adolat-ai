@@ -288,6 +288,8 @@ Quyidagi bo'limlarda tavsiflangan talablarning **shartnoma (kontrakt) qatlami** 
 
 Qo'shimcha: bitta yozuvning ketma-ket tahrirlari bitta so'rovga birlashtiriladi (**faqat `updateRecord`** — qo'shimcha qiluvchi amallar hech qachon birlashtirilmaydi, aks holda foydalanuvchi ishi yo'qolardi).
 
+**Yozuv identifikatorlari (ADR-009, Qabul qilingan 2026-07-31).** Oflaynda yaratilgan yozuvning `id`si **klient tomonda** (UUID v7) generatsiya qilinadi va birinchi kunidanoq yakuniy bo'ladi. Bu qaror lokal ↔ server id moslashtirish muammosini butunlay yo'q qiladi: `attachments.appeal_id` kabi FK'lar, `/appeals/:appealId` marshruti va UI holati hech qachon o'zgarmaydigan id'ga tayanadi. Ma'lumotlar bazasi sxemasi (`id uuid ... default gen_random_uuid()`) va RLS siyosatlari **o'zgarishsiz qoladi** — `default` faqat klient qiymat bermaganda ishlaydi, RLS esa `id`ni cheklamaydi. Batafsil: [`docs/adr/ADR-009-offline-identifier-strategy.md`](./adr/ADR-009-offline-identifier-strategy.md).
+
 Foydalanuvchiga ko'rsatiladigan holat (*"lokal saqlangan / yuborilishi kutilmoqda / sinxronlanmoqda / serverga yetkazildi"*) `SyncState` va `RecordSyncStatus` sifatida modellashtirilgan, lekin UI'ga hali ulanmagan (Phase 6A UI'ga tegmaydi).
 
 Chegaralar `test/core/offline/offline_architecture_boundary_test.dart` orqali CI darajasida majburlanadi.
